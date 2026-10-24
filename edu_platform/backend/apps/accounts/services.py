@@ -111,6 +111,7 @@ class AuthService:
                  org_slug: str | None = None, is_minor: bool = False, parent_consent: bool = False,
                  school=None, new_school: dict | None = None) -> User:
         from apps.schools.models import School
+        from apps.schools.services import ensure_organization, set_student_school
 
         if role not in ('student', 'parent'):
             raise ValidationError("Публичная регистрация доступна только для ролей 'student' или 'parent'.")
@@ -121,12 +122,13 @@ class AuthService:
         if User.all_objects.filter(email=email).exists():
             raise ValidationError({'email': 'Пользователь с таким email уже существует.'})
 
-        # Школа подключена к платформе — ученик сразу попадает в её организацию, иначе — в организацию по умолчанию
-        school_org = school.organization if school and school.organization_id and school.organization.is_active else None
-        org = school_org or Organization.objects.filter(
-            slug=org_slug or settings.DEFAULT_ORG_SLUG, is_active=True).first()
-        if not org:
-            raise ValidationError({'org_slug': 'Организация не найдена.'})
+        # Без школы (только родитель) — организация по умолчанию; со школой — организация этой школы
+        default_org = None
+        if not (school or new_school):
+            default_org = Organization.objects.filter(
+                slug=org_slug or settings.DEFAULT_ORG_SLUG, is_active=True).first()
+            if not default_org:
+                raise ValidationError({'org_slug': 'Организация не найдена.'})
 
         user = User.objects.create_user(
             email=email,
@@ -138,13 +140,18 @@ class AuthService:
             is_verified=False,
         )
         if new_school:
-            # Своя школа/кружок: видна только этому ученику, пока администратор не одобрит в Django admin
+            # Своя школа/кружок: в поиске появится после проверки в Django admin, организация создаётся сразу
             school = School.objects.create(**new_school, is_approved=False, source=School.Source.USER,
                                            created_by=user)
-        if school:
+        if school and role == 'student':
+            # Ученик — в организации своей школы; нет организации — создаётся пустая (без курсов и персонала)
+            set_student_school(user, school)
+        elif school:
             user.school = school
             user.save(update_fields=['school', 'updated_at'])
-        OrgMembership.objects.create(org=org, user=user, role=role)
+            OrgMembership.objects.create(org=ensure_organization(school), user=user, role=role)
+        else:
+            OrgMembership.objects.create(org=default_org, user=user, role=role)
         transaction.on_commit(lambda: cls.send_verification_email(user))
         return user
 
@@ -257,7 +264,11 @@ class AuthService:
             token_record.save(update_fields=['revoked_at'])
             raise AuthenticationFailed('Срок действия refresh токена истек.')
 
-        current_org_id = resolve_org_id(user, org_id or token_record.org_id)
+        try:
+            current_org_id = resolve_org_id(user, org_id or token_record.org_id)
+        except PermissionDenied:
+            # Организация сессии больше недоступна (ученик сменил школу) — не разлогиниваем, выбираем из своих
+            current_org_id = resolve_org_id(user, None)
 
         new_raw_refresh = secrets.token_urlsafe(48)
         new_hash = hash_token(new_raw_refresh)
@@ -389,15 +400,14 @@ class ParentService:
 
         from .models import ParentStudentRelation
 
-        parent_orgs = set(parent.memberships.filter(role='parent', is_active=True).values_list('org_id', flat=True))
-        if not parent_orgs:
+        if not parent.memberships.filter(role='parent', is_active=True).exists():
             raise PermissionDenied('Привязывать детей может пользователь с ролью «родитель».')
+        # Ребёнок может учиться в любой школе (у каждой своя организация); доступ откроется после его подтверждения
         student = User.objects.filter(
-            email=student_email.lower(), memberships__role='student', memberships__org_id__in=parent_orgs,
-            memberships__is_active=True,
-        ).first()
+            email=student_email.lower(), memberships__role='student', memberships__is_active=True,
+        ).distinct().first()
         if not student:
-            raise ValidationError({'student_email': 'Ученик с таким email не найден в вашей организации.'})
+            raise ValidationError({'student_email': 'Ученик с таким email не найден.'})
         if student.id == parent.id:
             raise ValidationError({'student_email': 'Нельзя привязать себя.'})
 
@@ -410,6 +420,17 @@ class ParentService:
                 metadata={'relation_id': relation.id},
             )
         return relation
+
+    @classmethod
+    def join_child_orgs(cls, parent: User, student: User) -> None:
+        """После подтверждения: родитель становится «родителем» в организациях школы ребёнка."""
+        orgs = student.memberships.filter(role='student', is_active=True).values_list('org_id', flat=True)
+        for org_id in orgs:
+            membership, created = OrgMembership.objects.get_or_create(org_id=org_id, user=parent, role='parent')
+            if not created and not membership.is_active:
+                membership.is_active = True
+                membership.save(update_fields=['is_active', 'updated_at'])
+
 
 class TwoFactorService:
     ISSUER = 'bagdar.academy'

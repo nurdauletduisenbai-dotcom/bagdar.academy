@@ -71,7 +71,16 @@ export interface UserProfile {
   is_verified: boolean
   is_minor: boolean
   /** Школа из справочника; is_approved=false — добавлена учеником и ждёт проверки */
-  school: { id: ID; name: string; name_kk: string; name_ru: string; locality: string; is_approved: boolean } | null
+  school: {
+    id: ID
+    name: string
+    name_kk: string
+    name_ru: string
+    locality: string
+    is_approved: boolean
+    /** Организация школы на платформе — ученик учится именно в ней */
+    organization: ID | null
+  } | null
   roles: Role[]
   created_at: string
 }

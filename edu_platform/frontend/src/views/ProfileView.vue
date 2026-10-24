@@ -40,6 +40,8 @@ async function saveSchool() {
     profile.data.value = p
     pickedSchool.value = null
     ownSchool.value = null
+    // Ученик переведён в организацию новой школы — переключаемся на неё (меню, курсы, роли)
+    if (p.school?.organization && p.school.organization !== auth.user?.org_id) await auth.switchOrg(p.school.organization)
   }
 }
 
