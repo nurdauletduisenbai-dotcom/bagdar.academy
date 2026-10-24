@@ -22,6 +22,8 @@ export default defineConfig(({ mode }) => {
       // Запросы идут на тот же origin, поэтому cookie с refresh-токеном работает без CORS
       proxy: {
         '/api': { target: apiTarget, changeOrigin: true },
+        // Карту сайта отдаёт Django (как nginx на сервере); robots.txt лежит в public/
+        '/sitemap.xml': { target: apiTarget, changeOrigin: true },
       },
       // Надёжный HMR при монтировании кода в Docker на macOS/Windows
       watch: env.CHOKIDAR_USEPOLLING === 'true' ? { usePolling: true } : undefined,

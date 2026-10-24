@@ -8,9 +8,14 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
+from apps.news.sitemap import sitemap_xml
+
+admin.site.site_header = 'bagdar.academy'
+admin.site.site_title = 'bagdar.academy'
+
 
 def health_check(request):
-    return JsonResponse({'status': 'healthy', 'service': 'edu_platform_api'})
+    return JsonResponse({'status': 'healthy', 'service': 'bagdar_academy_api'})
 
 
 def ready_check(request):
@@ -34,6 +39,9 @@ urlpatterns = [
     # Health & Readiness Probes
     path('health/', health_check, name='health'),
     path('ready/', ready_check, name='ready'),
+
+    # SEO: карта публичных страниц сайта (nginx проксирует /sitemap.xml сюда)
+    path('sitemap.xml', sitemap_xml, name='sitemap'),
 
     # Django Admin
     path('admin/', admin.site.urls),
