@@ -41,7 +41,8 @@ class TestAuthenticationFlows:
         assert res_ok.status_code == status.HTTP_201_CREATED
         user = User.objects.get(email='student@test.com')
         assert user.is_verified is False
-        assert OrgMembership.objects.filter(org=self.org, user=user, role='student').exists()
+        # Ученик — в организации своей школы (создана для новой школы автоматически), а не в org_slug
+        assert OrgMembership.objects.filter(org=user.school.organization, user=user, role='student').exists()
 
     def test_login_and_refresh_token_rotation(self):
         user = User.objects.create_user(

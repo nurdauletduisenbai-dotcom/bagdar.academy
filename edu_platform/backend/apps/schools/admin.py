@@ -2,6 +2,7 @@ from django.contrib import admin, messages
 from django.db.models import Count
 
 from .models import Region, School
+from .services import ensure_organization, move_students
 
 
 @admin.register(Region)
@@ -44,7 +45,13 @@ class SchoolAdmin(admin.ModelAdmin):
         if not change:
             obj.source = School.Source.ADMIN
             obj.created_by = request.user
+        old_org_id = form.initial.get('organization') if change else None
         super().save_model(request, obj, form, change)
+        # Школу связали с другой организацией — её ученики переходят туда же
+        if change and 'organization' in form.changed_data and obj.organization:
+            moved = move_students(obj, old_org_id, obj.organization)
+            if moved:
+                self.message_user(request, f'Учеников переведено в «{obj.organization.name}»: {moved}.')
 
     @admin.action(description='Одобрить (показывать в поиске)')
     def approve(self, request, queryset):
@@ -69,6 +76,15 @@ class SchoolAdmin(admin.ModelAdmin):
             return
         main, dupes = schools[0], schools[1:]
         from apps.accounts.models import User
+        from apps.organizations.models import OrgMembership
+
+        # Ученики дублей — в организацию основной школы; опустевшие авто-организации дублей отключаются
+        main_org = ensure_organization(main) if any(d.students.exists() for d in dupes) else main.organization
+        for d in dupes:
+            move_students(d, d.organization_id, main_org)
+            if d.organization and not OrgMembership.objects.filter(org=d.organization, is_active=True).exists():
+                d.organization.is_active = False
+                d.organization.save(update_fields=['is_active', 'updated_at'])
         moved = User.all_objects.filter(school__in=dupes).update(school=main)
         School.objects.filter(id__in=[d.id for d in dupes]).update(is_active=False, is_approved=False)
         self.message_user(request, f'Объединено в «{main.name}»: учеников перенесено {moved}, дублей скрыто {len(dupes)}.')

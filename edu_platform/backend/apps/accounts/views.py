@@ -225,12 +225,13 @@ class UserProfileView(APIView):
 
 @extend_schema(tags=['auth'])
 class MySchoolView(APIView):
-    """Смена своей школы из профиля: из справочника или своя (уходит на проверку)."""
+    """Смена своей школы из профиля: из справочника или своя (уходит на проверку). Ученик переходит в её организацию."""
     permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(summary='Сменить свою школу', request=MySchoolSerializer, responses=UserProfileSerializer)
     def put(self, request):
         from apps.schools.models import School
+        from apps.schools.services import set_student_school
 
         serializer = MySchoolSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -249,8 +250,12 @@ class MySchoolView(APIView):
             else:
                 school = School.objects.create(**new_school, is_approved=False, source=School.Source.USER,
                                                created_by=user)
-        user.school = school
-        user.save(update_fields=['school', 'updated_at'])
+        if user.memberships.filter(role='student').exists():
+            # Ученик переходит в организацию новой школы (пустая создаётся автоматически)
+            set_student_school(user, school)
+        else:
+            user.school = school
+            user.save(update_fields=['school', 'updated_at'])
         return Response(UserProfileSerializer(user, context={'request': request}).data)
 
 
@@ -420,6 +425,7 @@ class ParentRequestDetailView(APIView):
         relation = get_object_or_404(ParentStudentRelation, id=relation_id, student=request.user)
         relation.is_confirmed = True
         relation.save(update_fields=['is_confirmed', 'updated_at'])
+        ParentService.join_child_orgs(relation.parent, relation.student)
         return Response(ParentRelationSerializer(relation).data)
 
     @extend_schema(summary='Отклонить / отозвать доступ родителя', responses={204: None})

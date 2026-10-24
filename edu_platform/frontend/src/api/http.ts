@@ -26,7 +26,8 @@ http.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${accessToken}`
   }
   const orgId = localStorage.getItem('org_id')
-  if (orgId) {
+  // Список своих организаций запрашиваем без X-Org-ID: сохранённая могла устареть (например, ученик сменил школу)
+  if (orgId && !config.url?.startsWith('/orgs/my/')) {
     config.headers['X-Org-ID'] = orgId
   }
   return config

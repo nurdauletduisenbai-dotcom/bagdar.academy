@@ -123,7 +123,7 @@ class MySchoolSerializer(serializers.Serializer):
 class UserSchoolSerializer(serializers.ModelSerializer):
     class Meta:
         model = School
-        fields = ('id', 'name', 'name_kk', 'name_ru', 'locality', 'is_approved')
+        fields = ('id', 'name', 'name_kk', 'name_ru', 'locality', 'is_approved', 'organization')
 
 
 class UserProfileSerializer(serializers.ModelSerializer):

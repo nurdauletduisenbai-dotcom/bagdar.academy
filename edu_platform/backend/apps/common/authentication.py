@@ -1,4 +1,5 @@
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
+from rest_framework.exceptions import PermissionDenied
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .tenancy import resolve_org_id
@@ -19,8 +20,16 @@ class TenantJWTAuthentication(JWTAuthentication):
             return None
 
         user, token = result
-        requested = getattr(request._request, 'org_id', None) or token.get('org_id')
-        request._request.org_id = resolve_org_id(user, requested)
+        header_org = getattr(request._request, 'org_id', None)
+        if header_org:
+            # Явно выбранная организация: нет членства — 403
+            request._request.org_id = resolve_org_id(user, header_org)
+            return user, token
+        try:
+            request._request.org_id = resolve_org_id(user, token.get('org_id'))
+        except PermissionDenied:
+            # Организация в токене устарела (ученик сменил школу, его отключили) — выбираем заново, без ошибки
+            request._request.org_id = resolve_org_id(user, None)
         return user, token
 
 

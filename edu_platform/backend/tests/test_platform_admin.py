@@ -124,10 +124,28 @@ class TestParentsAndProgress:
         assert summary.status_code == 200 and summary.data['active_enrollments'] == 1
         assert auth_client(student, org.id).get('/api/v1/progress/org/summary/').status_code == 403
 
-    def test_parent_relation_requires_same_org(self, make_user, auth_client, org, other_org):
-        make_user('s@a.kz', 'student', org)
+    def test_parent_links_child_from_another_school_after_confirmation(self, make_user, auth_client, org,
+                                                                       other_org):
+        """У каждой школы своя организация: родитель привязывает ребёнка из любой, но только с его согласия."""
+        from apps.organizations.models import OrgMembership
+
+        student = make_user('s@a.kz', 'student', org)
         parent = make_user('p@b.kz', 'parent', other_org)
-        res = auth_client(parent, other_org.id).post('/api/v1/parents/children/', {'student_email': 's@a.kz'})
+        parent_client = auth_client(parent, other_org.id)
+        link = parent_client.post('/api/v1/parents/children/', {'student_email': 's@a.kz'})
+        assert link.status_code == 201 and link.data['is_confirmed'] is False
+        assert not OrgMembership.objects.filter(user=parent, org=org).exists()
+
+        auth_client(student, org.id).post(f"/api/v1/parents/requests/{link.data['id']}/")
+        # После подтверждения родитель — «родитель» в организации школы ребёнка
+        assert OrgMembership.objects.filter(user=parent, org=org, role='parent', is_active=True).exists()
+
+    def test_parent_link_needs_parent_role_and_known_student(self, make_user, auth_client, org):
+        make_user('s@a.kz', 'student', org)
+        teacher = make_user('t@a.kz', 'teacher', org)
+        assert auth_client(teacher, org.id).post('/api/v1/parents/children/', {'student_email': 's@a.kz'}).status_code == 403
+        parent = make_user('p@a.kz', 'parent', org)
+        res = auth_client(parent, org.id).post('/api/v1/parents/children/', {'student_email': 'nobody@a.kz'})
         assert res.status_code == 400
         assert not ParentStudentRelation.objects.exists()
 
