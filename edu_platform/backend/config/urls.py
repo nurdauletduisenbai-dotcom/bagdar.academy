@@ -32,6 +32,9 @@ def ready_check(request):
     }, status=200 if db_ok else 503)
 
 
+# Версия API в путях /api/<version>/…
+version = 'v1'
+
 urlpatterns = [
     # Корень -> Swagger UI со всеми эндпоинтами
     path('', RedirectView.as_view(pattern_name='swagger-ui', permanent=False)),
@@ -52,20 +55,20 @@ urlpatterns = [
     path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 
     # API v1 Versioned Endpoints
-    path('api/v1/auth/', include('apps.accounts.urls')),
-    path('api/v1/orgs/', include('apps.organizations.urls')),
-    path('api/v1/courses/', include('apps.courses.urls')),
-    path('api/v1/videos/', include('apps.videos.urls')),
-    path('api/v1/tests/', include('apps.assessments.urls')),
-    path('api/v1/parents/', include('apps.accounts.parent_urls')),
-    path('api/v1/progress/', include('apps.progress.urls')),
-    path('api/v1/payments/', include('apps.payments.urls')),
-    path('api/v1/audit/', include('apps.audit.urls')),
-    path('api/v1/news/', include('apps.news.urls')),
-    path('api/v1/schools/', include('apps.schools.urls')),
-    path('api/v1/', include('apps.content.urls')),
-    path('api/v1/', include('apps.questions.urls')),
-    path('api/v1/', include('apps.assignments.urls')),
-    path('api/v1/', include('apps.schedule.urls')),
-    path('api/v1/', include('apps.notifications.urls')),
+    path('api/' + version + '/auth/', include('apps.accounts.urls')),
+    path('api/' + version + '/orgs/', include('apps.organizations.urls')),
+    path('api/' + version + '/courses/', include('apps.courses.urls')),
+    path('api/' + version + '/videos/', include('apps.videos.urls')),
+    path('api/' + version + '/tests/', include('apps.assessments.urls')),
+    path('api/' + version + '/parents/', include('apps.accounts.parent_urls')),
+    path('api/' + version + '/progress/', include('apps.progress.urls')),
+    path('api/' + version + '/payments/', include('apps.payments.urls')),
+    path('api/' + version + '/audit/', include('apps.audit.urls')),
+    path('api/' + version + '/news/', include('apps.news.urls')),
+    path('api/' + version + '/schools/', include('apps.schools.urls')),
+    path('api/' + version + '/', include('apps.content.urls')),
+    path('api/' + version + '/', include('apps.questions.urls')),
+    path('api/' + version + '/', include('apps.assignments.urls')),
+    path('api/' + version + '/', include('apps.schedule.urls')),
+    path('api/' + version + '/', include('apps.notifications.urls')),
 ]
