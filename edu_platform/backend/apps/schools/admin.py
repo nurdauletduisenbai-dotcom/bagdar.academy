@@ -1,7 +1,9 @@
 from django.contrib import admin, messages
 from django.db.models import Count
+from rest_framework.exceptions import ValidationError
 
-from .models import Region, School
+from . import applications
+from .models import Region, School, SchoolApplication
 from .services import ensure_organization, move_students
 
 
@@ -88,3 +90,76 @@ class SchoolAdmin(admin.ModelAdmin):
         moved = User.all_objects.filter(school__in=dupes).update(school=main)
         School.objects.filter(id__in=[d.id for d in dupes]).update(is_active=False, is_approved=False)
         self.message_user(request, f'Объединено в «{main.name}»: учеников перенесено {moved}, дублей скрыто {len(dupes)}.')
+
+
+@admin.register(SchoolApplication)
+class SchoolApplicationAdmin(admin.ModelAdmin):
+    """
+    Заявки школ. «Одобрить» — организация школы + заявитель становится администратором
+    (сразу, если аккаунт есть, иначе приглашение на email). Отказ и уточнения — письмом с текстом из «Ответа заявителю».
+    """
+    list_display = ('school', 'org_type', 'contact_name', 'email', 'phone', 'status', 'claim_flag', 'school_listed',
+                    'created_at')
+    list_filter = ('status', 'org_type', 'is_claim', 'school__region')
+    search_fields = ('school__name', 'contact_name', 'email', 'phone', 'bin')
+    list_select_related = ('school__region',)
+    readonly_fields = ('school', 'org_type', 'contact_name', 'position', 'email', 'phone', 'students_count', 'bin',
+                       'message', 'language', 'is_claim', 'current_admins', 'status', 'reviewed_by', 'reviewed_at',
+                       'created_at')
+    fields = ('status', 'school', 'org_type', 'is_claim', 'current_admins', 'contact_name', 'position', 'email',
+              'phone', 'students_count', 'bin', 'message', 'language', 'review_note', 'reviewed_by', 'reviewed_at',
+              'created_at')
+    actions = ('approve', 'reject', 'ask_for_info')
+
+    def has_add_permission(self, request):
+        return False  # заявки приходят только с сайта
+
+    @admin.display(description='Есть админ', boolean=True)
+    def claim_flag(self, obj):
+        return applications.school_has_admin(obj.school)
+
+    @admin.display(description='В справочнике', boolean=True)
+    def school_listed(self, obj):
+        return obj.school.is_approved
+
+    @admin.display(description='Текущие администраторы школы')
+    def current_admins(self, obj):
+        from apps.organizations.models import OrgMembership
+        if not obj.school.organization_id:
+            return 'Организации ещё нет — будет создана при одобрении.'
+        emails = OrgMembership.objects.filter(org_id=obj.school.organization_id, role='admin', is_active=True) \
+            .values_list('user__email', flat=True)
+        return ', '.join(emails) or 'Нет — заявитель станет первым администратором.'
+
+    def _run(self, request, queryset, fn, done):
+        ok = 0
+        for app in queryset.select_related('school'):
+            try:
+                fn(app)
+                ok += 1
+            except ValidationError as exc:
+                self.message_user(request, f'{app}: {exc.detail[0] if isinstance(exc.detail, list) else exc.detail}',
+                                  messages.WARNING)
+        if ok:
+            self.message_user(request, done.format(ok))
+
+    @admin.action(description='Одобрить: создать организацию и назначить заявителя администратором')
+    def approve(self, request, queryset):
+        def one(app):
+            if applications.school_has_admin(app.school):
+                self.message_user(request, f'{app.school}: у школы уже есть администратор — заявитель добавлен вторым.',
+                                  messages.WARNING)
+            result = applications.approve(app, request.user)
+            how = 'приглашение отправлено на email' if result['invited'] else 'аккаунт уже был — роль выдана'
+            self.message_user(request, f'{app.school} → «{result["org"].name}»: {app.email} — {how}.')
+        self._run(request, queryset, one, 'Одобрено заявок: {}.')
+
+    @admin.action(description='Отклонить (письмо с текстом из «Ответа заявителю»)')
+    def reject(self, request, queryset):
+        self._run(request, queryset.exclude(status=SchoolApplication.Status.APPROVED),
+                  lambda app: applications.reject(app, request.user), 'Отклонено заявок: {}.')
+
+    @admin.action(description='Запросить уточнения (письмо с текстом из «Ответа заявителю»)')
+    def ask_for_info(self, request, queryset):
+        self._run(request, queryset.exclude(status=SchoolApplication.Status.APPROVED),
+                  lambda app: applications.request_info(app, request.user), 'Запрошены уточнения: {}.')

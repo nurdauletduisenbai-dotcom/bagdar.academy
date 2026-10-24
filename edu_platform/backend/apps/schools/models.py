@@ -80,3 +80,50 @@ class School(TimeStampedModel):
 
     def __str__(self):
         return f'{self.name} ({self.locality or self.region})'
+
+
+class SchoolApplication(TimeStampedModel):
+    """
+    Заявка на подключение школы / учебного центра / кружка. Рассматривает суперпользователь в Django admin:
+    «Одобрить» — организация школы + заявитель становится её администратором (сразу или по приглашению на email).
+    """
+
+    class OrgType(models.TextChoices):
+        SCHOOL = 'school', 'Школа'
+        CENTER = 'center', 'Учебный центр'
+        CLUB = 'club', 'Кружок / секция'
+
+    class Status(models.TextChoices):
+        NEW = 'new', 'Новая'
+        NEEDS_INFO = 'needs_info', 'Нужны уточнения'
+        APPROVED = 'approved', 'Одобрена'
+        REJECTED = 'rejected', 'Отклонена'
+
+    school = models.ForeignKey(School, on_delete=models.PROTECT, related_name='applications', verbose_name='Школа')
+    org_type = models.CharField('Тип', max_length=10, choices=OrgType.choices, default=OrgType.SCHOOL)
+    contact_name = models.CharField('ФИО заявителя', max_length=150)
+    position = models.CharField('Должность', max_length=100, blank=True)
+    email = models.EmailField('Email заявителя')
+    phone = models.CharField('Телефон', max_length=32)
+    students_count = models.PositiveIntegerField('Примерно учеников', null=True, blank=True)
+    bin = models.CharField('БИН', max_length=12, blank=True)
+    message = models.TextField('Комментарий', max_length=2000, blank=True)
+    language = models.CharField('Язык сайта', max_length=5, blank=True)
+
+    status = models.CharField('Статус', max_length=12, choices=Status.choices, default=Status.NEW, db_index=True)
+    is_claim = models.BooleanField('У школы уже был администратор', default=False,
+                                   help_text='Проверьте, что заявитель действительно представляет школу.')
+    review_note = models.TextField('Ответ заявителю / причина отказа', blank=True,
+                                   help_text='Уходит заявителю в письме при отказе или запросе уточнений.')
+    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='reviewed_school_applications', verbose_name='Рассмотрел')
+    reviewed_at = models.DateTimeField('Рассмотрена', null=True, blank=True)
+
+    class Meta:
+        db_table = 'school_applications'
+        ordering = ['-created_at']
+        verbose_name = 'Заявка школы'
+        verbose_name_plural = 'Заявки школ'
+
+    def __str__(self):
+        return f'{self.school.name} — {self.contact_name}'

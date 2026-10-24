@@ -21,6 +21,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isStaff = computed(() => hasRole('admin', 'teacher', 'curator'))
   const isStudent = computed(() => hasRole('student'))
   const isParent = computed(() => hasRole('parent'))
+  const isSuperuser = computed(() => !!user.value?.is_superuser)
 
   function clear() {
     user.value = null
@@ -48,6 +49,7 @@ export const useAuthStore = defineStore('auth', () => {
       email: profile.email,
       full_name: `${profile.first_name} ${profile.last_name}`.trim(),
       is_verified: profile.is_verified,
+      is_superuser: profile.is_superuser,
       org_id: orgId,
       roles: profile.roles,
       organizations: organizationsList,
@@ -87,7 +89,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    user, isAuthenticated, roles, organizations, currentOrg,
+    user, isAuthenticated, roles, organizations, currentOrg, isSuperuser,
     hasRole, isAdmin, isTeacher, isStaff, isStudent, isParent,
     login, logout, restore, switchOrg, loadProfile,
   }

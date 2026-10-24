@@ -84,6 +84,7 @@ watch(() => route.fullPath, () => (menuOpen.value = false))
         <RouterLink to="/login">{{ $t('public.login') }}</RouterLink>
         <RouterLink to="/register">{{ $t('public.register') }}</RouterLink>
         <RouterLink to="/invite">{{ $t('auth.haveInvite') }}</RouterLink>
+        <RouterLink to="/schools/apply">{{ $t('schoolApply.cta') }}</RouterLink>
       </nav>
       <address v-if="contacts.length" class="pub-footer__links pub-footer__contacts">
         <span class="pub-footer__title">{{ $t('public.contacts') }}</span>

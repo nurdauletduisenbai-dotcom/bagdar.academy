@@ -36,7 +36,7 @@ const statKeys: (keyof PlatformStats)[] = ['courses', 'students', 'teachers', 's
 const roles = [
   { key: 'Student', icon: 'play', to: '/register?role=student' },
   { key: 'Parent', icon: 'user', to: '/register?role=parent' },
-  { key: 'School', icon: 'edit', to: { path: '/', hash: '#contact' } },
+  { key: 'School', icon: 'edit', to: '/schools/apply' },
 ] as const
 
 const features = [
@@ -52,7 +52,7 @@ const audiences = [
   { key: 'Student', to: '/register?role=student' },
   { key: 'Parent', to: '/register?role=parent' },
   { key: 'Teacher', to: { path: '/', hash: '#contact' } },
-  { key: 'School', to: { path: '/', hash: '#contact' } },
+  { key: 'School', to: '/schools/apply' },
 ] as const
 const tab = ref<(typeof audiences)[number]['key']>('Student')
 const activeAudience = computed(() => audiences.find((a) => a.key === tab.value)!)

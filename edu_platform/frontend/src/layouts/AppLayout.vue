@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
+import { applicationsApi } from '@/api/schools'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import LangSwitcher from '@/components/ui/LangSwitcher.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -66,11 +67,29 @@ function onDocClick(e: MouseEvent) {
   if (menuOpen.value && menuRef.value && !menuRef.value.contains(e.target as Node)) menuOpen.value = false
 }
 
+// Суперпользователь: сколько заявок школ ждут решения (новые + уточнения) — бейдж в меню
+const pendingApps = ref(0)
+async function loadPendingApps() {
+  if (!auth.isSuperuser) return
+  try {
+    const s = await applicationsApi.summary()
+    pendingApps.value = s.new + s.needs_info
+  } catch {
+    pendingApps.value = 0
+  }
+}
+
 watch(() => route.fullPath, () => {
   menuOpen.value = false
   mobileOpen.value = false
+  loadPendingApps()
 })
+// Решение по заявке на её странице — сразу обновляем бейдж (событие шлёт ApplicationView)
+window.addEventListener('applications-changed', loadPendingApps)
+onUnmounted(() => window.removeEventListener('applications-changed', loadPendingApps))
+
 onMounted(() => {
+  loadPendingApps()
   notifications.start()
   document.addEventListener('click', onDocClick)
 })
@@ -87,6 +106,11 @@ onUnmounted(() => {
       <RouterLink to="/home" class="brand">bagdar<span class="brand__dot">.</span></RouterLink>
 
       <nav class="topnav__links" :class="{ open: mobileOpen }">
+        <RouterLink v-if="auth.isSuperuser" :to="{ name: 'platform-applications' }" class="topnav__link"
+                    :class="{ active: route.path.startsWith('/platform') }">
+          {{ $t('platformApps.title') }}
+          <span v-if="pendingApps" class="nav-count">{{ pendingApps }}</span>
+        </RouterLink>
         <RouterLink v-for="item in top" :key="item.to" :to="item.to" class="topnav__link" :class="{ active: isActive(item.to) }">
           {{ $t(item.labelKey) }}
         </RouterLink>
@@ -211,6 +235,18 @@ onUnmounted(() => {
 }
 .topnav__link--extra {
   display: none;
+}
+.nav-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background: var(--green-500);
+  color: var(--teal-900);
+  font: 600 11px / 1 var(--font-sans);
 }
 .topnav__right {
   display: flex;
