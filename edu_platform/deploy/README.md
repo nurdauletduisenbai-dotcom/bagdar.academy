@@ -5,7 +5,7 @@ Raspberry Pi на Debian 13 (`nur@10.42.0.23`). Всё работает без D
 ```text
 nginx :80/:443 ─┬─ /            → /var/www/bagdar.academy/frontend   (собранный Vue)
                 ├─ /static/     → /var/www/bagdar.academy/static     (collectstatic)
-                └─ /api /admin /docs /health … → gunicorn 127.0.0.1:8000  (bagdar-backend)
+                └─ /api /admin /docs /health /sitemap.xml … → gunicorn 127.0.0.1:8000  (bagdar-backend)
 Celery: bagdar-worker + bagdar-beat → Redis 127.0.0.1:6379
 PostgreSQL 17 127.0.0.1:5432, база bagdar, роль bagdar
 ```

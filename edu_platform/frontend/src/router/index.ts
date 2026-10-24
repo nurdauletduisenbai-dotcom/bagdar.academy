@@ -1,8 +1,11 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { watch } from 'vue'
+import { createRouter, createWebHistory, type RouteLocationNormalized, type RouteRecordRaw } from 'vue-router'
 
+import { i18n } from '@/i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/stores/toast'
 import type { Role } from '@/types/api'
+import { setPageMeta } from '@/utils/seo'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -13,6 +16,8 @@ declare module 'vue-router' {
     /** Кому доступна страница (роль в текущей организации) */
     roles?: Role[]
     title?: string
+    /** SEO публичных страниц: ключи i18n заголовка и описания (title без ключа — берётся meta.title) */
+    seo?: { title?: string; description: string; brandFirst?: boolean }
   }
 }
 
@@ -33,10 +38,10 @@ const routes: RouteRecordRaw[] = [
     path: '/',
     component: () => import('@/layouts/PublicLayout.vue'),
     children: [
-      { path: '', name: 'landing', component: () => import('@/views/public/LandingView.vue'), meta: { public: true, guestOnly: true, title: 'bagdar.academy' } },
-      { path: 'news', name: 'news', component: () => import('@/views/public/NewsListView.vue'), meta: { public: true, title: 'Новости' } },
-      { path: 'news/:slug', name: 'news-post', component: () => import('@/views/public/PostView.vue'), props: true, meta: { public: true, title: 'Новости' } },
-      { path: 'privacy', name: 'privacy', component: () => import('@/views/public/PrivacyView.vue'), meta: { public: true, title: 'Политика конфиденциальности' } },
+      { path: '', name: 'landing', component: () => import('@/views/public/LandingView.vue'), meta: { public: true, guestOnly: true, seo: { title: 'seo.tagline', description: 'seo.description', brandFirst: true } } },
+      { path: 'news', name: 'news', component: () => import('@/views/public/NewsListView.vue'), meta: { public: true, seo: { title: 'news.title', description: 'seo.newsDescription' } } },
+      { path: 'news/:slug', name: 'news-post', component: () => import('@/views/public/PostView.vue'), props: true, meta: { public: true, seo: { title: 'news.title', description: 'seo.newsDescription' } } },
+      { path: 'privacy', name: 'privacy', component: () => import('@/views/public/PrivacyView.vue'), meta: { public: true, seo: { title: 'public.privacy', description: 'seo.privacyDescription' } } },
     ],
   },
 
@@ -109,8 +114,24 @@ router.beforeEach((to) => {
   }
 })
 
-router.afterEach((to) => {
-  document.title = to.meta.title ? `${to.meta.title} — EduPlatform` : 'EduPlatform'
+/** Общие теги страницы; пост новости потом уточняет их сам (PostView) по заголовку и анонсу */
+function applyRouteMeta(to: RouteLocationNormalized) {
+  const { t, locale } = i18n.global
+  const seo = to.meta.seo
+  setPageMeta({
+    title: seo?.title ? t(seo.title) : to.meta.title,
+    description: t(seo?.description ?? 'seo.description'),
+    brandFirst: seo?.brandFirst,
+    locale: locale.value,
+  })
+}
+
+router.afterEach((to) => applyRouteMeta(to))
+
+// Смена языка: перерисовываем теги текущей страницы (кроме поста — его заголовок не зависит от языка)
+watch(i18n.global.locale, () => {
+  const route = router.currentRoute.value
+  if (route.name !== 'news-post') applyRouteMeta(route)
 })
 
 export default router
