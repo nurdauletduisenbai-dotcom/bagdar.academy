@@ -760,3 +760,16 @@ export interface ManagedApplicationPatch {
   message?: string
   review_note?: string
 }
+
+/** GET /auth/invites/preview/ — данные для формы по ссылке из письма */
+export interface InvitePreview {
+  status: 'valid' | 'used' | 'expired' | 'not_found'
+  org_name?: string
+  role?: Role
+  email?: string
+  /** Персональное приглашение: email — логин, его не меняют */
+  email_locked?: boolean
+  first_name?: string
+  last_name?: string
+  expires_at?: string
+}

@@ -1,5 +1,6 @@
 import type {
   AuthSession,
+  InvitePreview,
   LoginResponse,
   Message,
   NewSchoolPayload,
@@ -34,6 +35,8 @@ const data = <T>(p: Promise<{ data: T }>) => p.then((r) => r.data)
 export const authApi = {
   login: (payload: LoginPayload) => data(http.post<LoginResponse>('/auth/login/', payload)),
   register: (payload: RegisterPayload) => data(http.post<Message>('/auth/register/', payload)),
+  /** Что за приглашение по ссылке из письма: кому, куда, действует ли ещё */
+  previewInvite: (token: string) => data(http.get<InvitePreview>('/auth/invites/preview/', { params: { token } })),
   registerByInvite: (payload: { invite_token: string; email: string; password: string; first_name: string; last_name: string }) =>
     data(http.post<Message>('/auth/register-by-invite/', payload)),
   logout: () => http.post('/auth/logout/', {}),

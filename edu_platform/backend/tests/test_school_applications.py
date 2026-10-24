@@ -1,7 +1,9 @@
 import re
+from datetime import timedelta
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 from apps.organizations.models import Invite, OrgMembership
 from apps.schools import applications
@@ -210,3 +212,42 @@ class TestManageOnSite:
         with django_capture_on_commit_callbacks(execute=True):
             res = root.post(f'{self.MANAGE}{app.id}/reject/', {'review_note': 'Не подтвердили.'}, format='json')
         assert res.data['status'] == 'rejected' and 'Не подтвердили.' in mailoutbox[-1].body
+
+
+@pytest.mark.django_db
+class TestInviteLinkFromEmail:
+    PREVIEW = '/api/v1/auth/invites/preview/'
+    REGISTER = '/api/v1/auth/register-by-invite/'
+
+    def _approved_link(self, api, school, mailoutbox, capture):
+        apply(api, school_id=school.id, contact_name='Сәуле Ахметова Бекқызы')
+        with capture(execute=True):
+            applications.approve(SchoolApplication.objects.get(), None)
+        return re.search(r'/invite\?token=(\S+)', mailoutbox[-1].body).group(1)
+
+    def test_preview_prefills_and_locks_email(self, api, school, mailoutbox, django_capture_on_commit_callbacks):
+        token = self._approved_link(api, school, mailoutbox, django_capture_on_commit_callbacks)
+        data = api.get(self.PREVIEW, {'token': token}).data
+        assert data['status'] == 'valid' and data['role'] == 'admin' and data['email_locked'] is True
+        assert (data['email'], data['first_name'], data['last_name']) == \
+            ('director@school39.kz', 'Сәуле', 'Ахметова Бекқызы')
+
+    def test_only_password_needed_email_cannot_be_swapped_and_link_dies(
+            self, api, school, mailoutbox, django_capture_on_commit_callbacks):
+        token = self._approved_link(api, school, mailoutbox, django_capture_on_commit_callbacks)
+        res = api.post(self.REGISTER, {'invite_token': token, 'email': 'attacker@evil.kz', 'password': PASSWORD,
+                                       'first_name': 'Сәуле', 'last_name': 'Ахметова'})
+        assert res.status_code == 201
+        assert User.objects.filter(email='director@school39.kz').exists()
+        assert not User.objects.filter(email='attacker@evil.kz').exists()
+        # Ссылка и код больше не работают
+        assert api.get(self.PREVIEW, {'token': token}).data == {'status': 'used'}
+        again = api.post(self.REGISTER, {'invite_token': token, 'password': PASSWORD, 'first_name': 'X',
+                                         'last_name': 'Y'})
+        assert again.status_code == 400 and 'использовано' in str(again.data['error']['details']['invite_token'])
+
+    def test_expired_and_unknown_links(self, api, school, mailoutbox, django_capture_on_commit_callbacks):
+        token = self._approved_link(api, school, mailoutbox, django_capture_on_commit_callbacks)
+        Invite.objects.update(expires_at=timezone.now() - timedelta(minutes=1))
+        assert api.get(self.PREVIEW, {'token': token}).data == {'status': 'expired'}
+        assert api.get(self.PREVIEW, {'token': 'nope'}).data == {'status': 'not_found'}

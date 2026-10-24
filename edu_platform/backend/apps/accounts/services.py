@@ -37,6 +37,13 @@ def decrypt_secret(secret_encrypted: str) -> str:
         raise AuthenticationFailed('Секрет 2FA повреждён. Обратитесь к администратору.') from exc
 
 
+INVITE_ERRORS = {
+    'not_found': 'Приглашение не найдено. Проверьте ссылку или код.',
+    'used': 'Это приглашение уже использовано. Войдите в аккаунт.',
+    'expired': 'Срок действия приглашения истёк. Попросите новое.',
+}
+
+
 class AuthService:
     MAX_LOGIN_ATTEMPTS = 5
     LOGIN_BLOCK_TIME = 900  # 15 минут
@@ -157,12 +164,17 @@ class AuthService:
 
     @classmethod
     @transaction.atomic
-    def register_by_invite(cls, invite_token: str, email: str, password: str, first_name: str, last_name: str) -> User:
+    def register_by_invite(cls, invite_token: str, password: str, first_name: str, last_name: str,
+                           email: str = '') -> User:
         invite = Invite.objects.select_for_update().filter(token_hash=hash_token(invite_token)).first()
-        if not invite or not invite.is_valid:
-            raise ValidationError('Приглашение недействительно или срок его действия истек.')
+        state = cls.invite_state(invite)
+        if state != 'valid':
+            raise ValidationError({'invite_token': INVITE_ERRORS[state]})
 
-        email = email.lower()
+        # Персональное приглашение: логин — email из приглашения, подменить его нельзя
+        email = (invite.email or email or '').lower()
+        if not email:
+            raise ValidationError({'email': 'Укажите email.'})
         if User.all_objects.filter(email=email).exists():
             raise ValidationError({'email': 'Пользователь с таким email уже существует. Войдите в аккаунт.'})
 
@@ -190,6 +202,35 @@ class AuthService:
         invite.used_count += 1
         invite.save(update_fields=['used_count'])
         return user
+
+    @staticmethod
+    def invite_state(invite) -> str:
+        """valid / used / expired / not_found — что показать на странице приглашения."""
+        if not invite:
+            return 'not_found'
+        if invite.used_count >= invite.max_uses:
+            return 'used'
+        if invite.expires_at <= timezone.now():
+            return 'expired'
+        return 'valid'
+
+    @classmethod
+    def preview_invite(cls, invite_token: str) -> dict:
+        """Данные для формы по ссылке из письма — без регистрации и без расхода приглашения."""
+        invite = Invite.objects.select_related('org').filter(token_hash=hash_token(invite_token or '')).first()
+        state = cls.invite_state(invite)
+        if state != 'valid':
+            return {'status': state}
+        return {
+            'status': state,
+            'org_name': invite.org.name,
+            'role': invite.role,
+            'email': invite.email,
+            'email_locked': bool(invite.email),
+            'first_name': invite.first_name,
+            'last_name': invite.last_name,
+            'expires_at': invite.expires_at,
+        }
 
     # ---------- Вход / выход ----------
 

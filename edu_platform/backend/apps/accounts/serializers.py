@@ -34,10 +34,22 @@ class RegisterSerializer(serializers.Serializer):
 
 class RegisterByInviteSerializer(serializers.Serializer):
     invite_token = serializers.CharField()
-    email = serializers.EmailField()
+    email = serializers.EmailField(required=False, allow_blank=True,
+                                   help_text='Для персонального приглашения игнорируется — логином будет email из него')
     password = serializers.CharField(write_only=True, validators=[validate_password])
     first_name = serializers.CharField(max_length=100)
     last_name = serializers.CharField(max_length=100)
+
+
+class InvitePreviewSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=['valid', 'used', 'expired', 'not_found'])
+    org_name = serializers.CharField(required=False)
+    role = serializers.CharField(required=False)
+    email = serializers.CharField(required=False, allow_blank=True)
+    email_locked = serializers.BooleanField(required=False)
+    first_name = serializers.CharField(required=False, allow_blank=True)
+    last_name = serializers.CharField(required=False, allow_blank=True)
+    expires_at = serializers.DateTimeField(required=False)
 
 
 class LoginSerializer(serializers.Serializer):

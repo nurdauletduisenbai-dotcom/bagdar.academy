@@ -54,6 +54,11 @@ class Invite(TimeStampedModel):
     used_count = models.PositiveIntegerField(default=0)
     expires_at = models.DateTimeField()
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_invites')
+    # Персональное приглашение (например, админу после одобрения заявки школы): email — неизменяемый логин,
+    # имя подставляется в форму. Пусто — общий код, данные вводит сам приглашённый.
+    email = models.EmailField('Для email', blank=True)
+    first_name = models.CharField('Имя', max_length=100, blank=True)
+    last_name = models.CharField('Фамилия', max_length=100, blank=True)
 
     class Meta:
         db_table = 'invites'
