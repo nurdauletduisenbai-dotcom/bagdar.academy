@@ -125,6 +125,16 @@ export interface Organization {
   created_at: string
 }
 
+/** Найденный пользователь в форме «Добавить существующего» (/orgs/members/lookup/) */
+export interface MemberLookup {
+  id: ID
+  email: string
+  full_name: string
+  /** Активные роли в текущей организации — пусто, если ещё не участник */
+  roles: Role[]
+  school: string
+}
+
 export interface Member {
   id: ID
   user: ID
