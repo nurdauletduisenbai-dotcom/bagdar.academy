@@ -56,6 +56,8 @@ export default {
     forgotPassword: 'Забыли пароль?',
     register: 'Регистрация',
     haveInvite: 'У меня есть приглашение',
+    registerPrivacy: 'Регистрируясь, вы соглашаетесь с {link}.',
+    registerPrivacyLink: 'политикой конфиденциальности',
     demoLogin: 'Демо-вход',
   },
   public: {
@@ -70,6 +72,8 @@ export default {
     menu: 'Меню',
     footerNote: 'Образовательная платформа для школ и учебных центров Казахстана.',
     rights: 'Все права защищены.',
+    privacy: 'Политика конфиденциальности',
+    contacts: 'Контакты',
   },
   landing: {
     heroEyebrow: 'Платформа для школ и учебных центров',
@@ -183,7 +187,8 @@ export default {
     contactAudParent: 'Родитель',
     contactAudSchool: 'Школа или учебный центр',
     contactMessage: 'Ваш вопрос (необязательно)',
-    contactConsent: 'Согласен на обработку персональных данных',
+    contactConsent: 'Согласен на обработку персональных данных в соответствии с {link}',
+    contactConsentLink: 'политикой конфиденциальности',
     contactSubmit: 'Отправить заявку',
     contactSending: 'Отправляем…',
     contactDone: 'Спасибо! Заявка принята — мы скоро свяжемся с вами.',
@@ -202,6 +207,12 @@ export default {
     author: 'Автор',
     ctaTitle: 'Попробуйте платформу сами',
     ctaText: 'Зарегистрируйтесь, чтобы получить доступ к курсам и тестам.',
+  },
+  seo: {
+    tagline: 'Подготовка к ЕНТ и онлайн-обучение',
+    description: 'bagdar.academy — платформа для школ и учебных центров Казахстана: видеоуроки, тесты в формате ЕНТ, домашние задания и отчёт об успеваемости для ученика, родителя и учителя.',
+    newsDescription: 'Новости, статьи и события bagdar.academy: обновления платформы, советы по подготовке к ЕНТ и жизнь школ.',
+    privacyDescription: 'Как bagdar.academy собирает, использует и защищает персональные данные учеников, родителей и учителей.',
   },
   labels: {
     courseType: {
@@ -350,7 +361,6 @@ export default {
     forgotPassword: 'Восстановление пароля',
     resetPassword: 'Новый пароль',
     verifyEmail: 'Подтверждение email',
-    news: 'Новости',
     home: 'Главная',
     catalog: 'Каталог',
     myCourses: 'Мои курсы',

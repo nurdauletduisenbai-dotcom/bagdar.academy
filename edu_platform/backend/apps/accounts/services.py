@@ -291,7 +291,7 @@ class AuthService:
         from apps.notifications.tasks import send_email_notification_task
         send_email_notification_task.delay(
             user_id=user.id,
-            subject='Подтверждение регистрации на EduPlatform',
+            subject='Подтверждение регистрации на bagdar.academy',
             template='verify_email',
             context={'link': f"{settings.FRONTEND_URL}/verify-email?token={raw_token}"},
         )
@@ -346,7 +346,7 @@ class AuthService:
         from apps.notifications.tasks import send_email_notification_task
         link = f'{settings.FRONTEND_URL}/reset-password?token={raw_token}'
         transaction.on_commit(lambda: send_email_notification_task.delay(
-            user_id=user.id, subject='Сброс пароля EduPlatform', template='password_reset', context={'link': link},
+            user_id=user.id, subject='Сброс пароля bagdar.academy', template='password_reset', context={'link': link},
         ))
 
     @classmethod
@@ -399,7 +399,7 @@ class ParentService:
         return relation
 
 class TwoFactorService:
-    ISSUER = 'EduPlatform'
+    ISSUER = 'bagdar.academy'
     BACKUP_CODES_COUNT = 8
 
     @classmethod

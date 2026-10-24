@@ -415,7 +415,7 @@ def seed_role_demo(org, admin_user, teacher_user, student1, student2, parent_use
         'mode': Test.Mode.PRACTICE, 'time_limit_minutes': 0, 'max_attempts': 3, 'passing_score_pct': 50})
     TestQuestion.objects.get_or_create(test=essay, question=open_q, defaults={'order': 1, 'points': 5})
 
-    Announcement.objects.get_or_create(org=org, title='Добро пожаловать в EduPlatform!', defaults={
+    Announcement.objects.get_or_create(org=org, title='Добро пожаловать в bagdar.academy!', defaults={
         'content': 'Это демо-объявление для всей школы. Расписание — в разделе «Расписание».',
         'created_by': admin_user})
     Announcement.objects.get_or_create(org=org, course=c1, title='Контрольная по тригонометрии', defaults={
