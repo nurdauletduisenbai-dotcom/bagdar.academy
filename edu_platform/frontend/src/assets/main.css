@@ -1002,3 +1002,54 @@ table.table {
   color: var(--text-tertiary);
   background: var(--surface-subtle);
 }
+
+/* ---------- Движение на публичных страницах (composables/useMotion.ts) ---------- */
+:root {
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-reveal: 800ms;
+}
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 28px, 0);
+  transition: opacity var(--dur-reveal) var(--ease-out-expo), transform var(--dur-reveal) var(--ease-out-expo);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal--left {
+  transform: translate3d(-36px, 0, 0);
+}
+.reveal--right {
+  transform: translate3d(36px, 0, 0);
+}
+.reveal--scale {
+  transform: scale(0.94);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+/* Задержка нужна только для появления — наведение реагирует сразу */
+.reveal.is-visible:hover {
+  transition-delay: 0ms;
+}
+.parallax {
+  transform: translate3d(0, var(--py, 0px), 0);
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal--left,
+  .reveal--right,
+  .reveal--scale {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .parallax {
+    transform: none;
+  }
+  .motion-scope *,
+  .motion-scope *::before,
+  .motion-scope *::after {
+    animation: none !important;
+  }
+}
