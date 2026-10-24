@@ -56,6 +56,9 @@ async function onSubmit() {
       <label v-if="form.is_minor" class="inline"><input v-model="form.parent_consent" type="checkbox" /> Родитель согласен</label>
       <p v-if="error" class="alert alert--error">{{ error }}</p>
       <button class="btn btn--lg btn--block" :disabled="loading">Зарегистрироваться</button>
+      <i18n-t keypath="auth.registerPrivacy" tag="p" class="small muted" scope="global">
+        <template #link><RouterLink to="/privacy" target="_blank">{{ $t('auth.registerPrivacyLink') }}</RouterLink></template>
+      </i18n-t>
       <p class="small muted">Учителя и кураторы регистрируются по приглашению. <RouterLink to="/login">Уже есть аккаунт</RouterLink></p>
     </form>
   </AuthCard>

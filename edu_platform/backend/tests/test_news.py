@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 from unittest import mock
 from urllib.parse import quote
@@ -108,3 +109,69 @@ class TestContactRequest:
             assert api.post(self.URL, payload).status_code == 201
             assert api.post(self.URL, payload).status_code == 429
         cache.clear()
+
+
+@pytest.mark.django_db
+class TestContactRequestNotify:
+    URL = '/api/v1/news/contact/'
+    PAYLOAD = {'name': 'Айгерим', 'phone': '+77011234567', 'audience': 'parent',
+               'message': 'Есть ли курсы?', 'language': 'kk', 'consent': True}
+
+    @pytest.fixture
+    def leads(self, settings):
+        settings.LEADS_TELEGRAM_BOT_TOKEN = '123:test'
+        settings.LEADS_TELEGRAM_CHAT_ID = '-100500'
+        settings.LEADS_NOTIFY_EMAILS = ['team@bagdar.academy', 'sales@bagdar.academy']
+        return settings
+
+    def _post(self, api, django_capture_on_commit_callbacks):
+        with django_capture_on_commit_callbacks(execute=True):
+            return api.post(self.URL, self.PAYLOAD)
+
+    def test_sends_telegram_and_email(self, api, leads, mailoutbox, django_capture_on_commit_callbacks):
+        response = mock.MagicMock(status=200)
+        with mock.patch('apps.news.tasks.urllib.request.urlopen') as urlopen:
+            urlopen.return_value.__enter__.return_value = response
+            res = self._post(api, django_capture_on_commit_callbacks)
+
+        assert res.status_code == 201
+        request = urlopen.call_args.args[0]
+        assert request.full_url == 'https://api.telegram.org/bot123:test/sendMessage'
+        body = json.loads(request.data)
+        assert body['chat_id'] == '-100500'
+        assert 'Айгерим' in body['text'] and '+77011234567' in body['text'] and 'Родитель' in body['text']
+        assert len(mailoutbox) == 1
+        assert mailoutbox[0].to == ['team@bagdar.academy', 'sales@bagdar.academy']
+        assert 'Есть ли курсы?' in mailoutbox[0].body
+
+    def test_nothing_configured_does_nothing(self, api, settings, mailoutbox, django_capture_on_commit_callbacks):
+        settings.LEADS_TELEGRAM_BOT_TOKEN = ''
+        settings.LEADS_TELEGRAM_CHAT_ID = ''
+        settings.LEADS_NOTIFY_EMAILS = []
+        with mock.patch('apps.news.tasks.urllib.request.urlopen') as urlopen, \
+                mock.patch('apps.news.tasks.notify_new_contact_request.delay') as delay:
+            res = self._post(api, django_capture_on_commit_callbacks)
+        assert res.status_code == 201
+        delay.assert_not_called()
+        urlopen.assert_not_called()
+        assert mailoutbox == []
+
+    def test_telegram_failure_still_sends_email(self, api, leads, mailoutbox, django_capture_on_commit_callbacks):
+        with mock.patch('apps.news.tasks.urllib.request.urlopen', side_effect=OSError('network down')):
+            res = self._post(api, django_capture_on_commit_callbacks)
+        assert res.status_code == 201
+        assert len(mailoutbox) == 1
+
+    def test_all_channels_failing_never_breaks_form(self, api, leads, django_capture_on_commit_callbacks):
+        from apps.news.models import ContactRequest
+
+        with mock.patch('apps.news.tasks.urllib.request.urlopen', side_effect=OSError('network down')), \
+                mock.patch('apps.news.tasks.send_mail', side_effect=OSError('smtp down')):
+            res = self._post(api, django_capture_on_commit_callbacks)
+        assert res.status_code == 201
+        assert ContactRequest.objects.count() == 1
+
+    def test_broker_down_never_breaks_form(self, api, leads, django_capture_on_commit_callbacks):
+        with mock.patch('apps.news.tasks.notify_new_contact_request.delay', side_effect=ConnectionError('redis')):
+            res = self._post(api, django_capture_on_commit_callbacks)
+        assert res.status_code == 201

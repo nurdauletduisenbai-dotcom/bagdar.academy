@@ -56,6 +56,8 @@ export default {
     forgotPassword: 'Забыли пароль?',
     register: 'Регистрация',
     haveInvite: 'У меня есть приглашение',
+    registerPrivacy: 'Регистрируясь, вы соглашаетесь с {link}.',
+    registerPrivacyLink: 'политикой конфиденциальности',
     demoLogin: 'Демо-вход',
   },
   public: {
@@ -70,6 +72,8 @@ export default {
     menu: 'Меню',
     footerNote: 'Образовательная платформа для школ и учебных центров Казахстана.',
     rights: 'Все права защищены.',
+    privacy: 'Политика конфиденциальности',
+    contacts: 'Контакты',
   },
   landing: {
     heroEyebrow: 'Платформа для школ и учебных центров',
@@ -183,7 +187,8 @@ export default {
     contactAudParent: 'Родитель',
     contactAudSchool: 'Школа или учебный центр',
     contactMessage: 'Ваш вопрос (необязательно)',
-    contactConsent: 'Согласен на обработку персональных данных',
+    contactConsent: 'Согласен на обработку персональных данных в соответствии с {link}',
+    contactConsentLink: 'политикой конфиденциальности',
     contactSubmit: 'Отправить заявку',
     contactSending: 'Отправляем…',
     contactDone: 'Спасибо! Заявка принята — мы скоро свяжемся с вами.',

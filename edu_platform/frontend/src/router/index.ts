@@ -36,6 +36,7 @@ const routes: RouteRecordRaw[] = [
       { path: '', name: 'landing', component: () => import('@/views/public/LandingView.vue'), meta: { public: true, guestOnly: true, title: 'bagdar.academy' } },
       { path: 'news', name: 'news', component: () => import('@/views/public/NewsListView.vue'), meta: { public: true, title: 'Новости' } },
       { path: 'news/:slug', name: 'news-post', component: () => import('@/views/public/PostView.vue'), props: true, meta: { public: true, title: 'Новости' } },
+      { path: 'privacy', name: 'privacy', component: () => import('@/views/public/PrivacyView.vue'), meta: { public: true, title: 'Политика конфиденциальности' } },
     ],
   },
 

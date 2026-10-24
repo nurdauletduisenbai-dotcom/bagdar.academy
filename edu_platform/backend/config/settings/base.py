@@ -289,3 +289,8 @@ YOUTUBE_API_KEY = env('YOUTUBE_API_KEY', default='')
 STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY', default='')
 STRIPE_WEBHOOK_SECRET = env('STRIPE_WEBHOOK_SECRET', default='')
 TWO_FACTOR_ENCRYPTION_KEY = env('TWO_FACTOR_ENCRYPTION_KEY', default='dGhpcy1pcy1hLTMyLWJ5dGUtZmVybmV0LWtleS0xMjM=')
+
+# Уведомления команде о заявках с сайта. Пусто — канал выключен (заявка всё равно видна в admin).
+LEADS_TELEGRAM_BOT_TOKEN = env('LEADS_TELEGRAM_BOT_TOKEN', default='')
+LEADS_TELEGRAM_CHAT_ID = env('LEADS_TELEGRAM_CHAT_ID', default='')
+LEADS_NOTIFY_EMAILS = env.list('LEADS_NOTIFY_EMAILS', default=[])

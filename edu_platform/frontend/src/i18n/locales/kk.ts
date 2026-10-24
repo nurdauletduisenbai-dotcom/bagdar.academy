@@ -56,6 +56,8 @@ export default {
     forgotPassword: 'Құпия сөзді ұмыттыңыз ба?',
     register: 'Тіркелу',
     haveInvite: 'Шақыру сілтемем бар',
+    registerPrivacy: 'Тіркелу арқылы сіз {link} келісесіз.',
+    registerPrivacyLink: 'құпиялылық саясатымен',
     demoLogin: 'Демо-кіру',
   },
   public: {
@@ -70,6 +72,8 @@ export default {
     menu: 'Мәзір',
     footerNote: 'Қазақстан мектептері мен оқу орталықтарына арналған білім беру платформасы.',
     rights: 'Барлық құқықтар қорғалған.',
+    privacy: 'Құпиялылық саясаты',
+    contacts: 'Байланыс',
   },
   landing: {
     heroEyebrow: 'Мектептер мен оқу орталықтарына арналған платформа',
@@ -183,7 +187,8 @@ export default {
     contactAudParent: 'Ата-ана',
     contactAudSchool: 'Мектеп немесе оқу орталығы',
     contactMessage: 'Сұрағыңыз (міндетті емес)',
-    contactConsent: 'Жеке деректерімді өңдеуге келісемін',
+    contactConsent: '{link} сәйкес жеке деректерімді өңдеуге келісемін',
+    contactConsentLink: 'Құпиялылық саясатына',
     contactSubmit: 'Өтінім жіберу',
     contactSending: 'Жіберілуде…',
     contactDone: 'Рахмет! Өтінім қабылданды — жақын арада хабарласамыз.',
