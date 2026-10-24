@@ -180,7 +180,7 @@ SIMPLE_JWT = {
 
 # drf-spectacular: Swagger UI на /docs/, ReDoc на /redoc/, схема на /api/schema/
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'EduPlatform REST API',
+    'TITLE': 'bagdar.academy REST API',
     'DESCRIPTION': (
         'Серверная часть образовательной платформы (курсы, видео, тесты, организации).\n\n'
         '**Как авторизоваться в Swagger:**\n'

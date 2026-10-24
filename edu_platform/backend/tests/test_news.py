@@ -108,3 +108,27 @@ class TestContactRequest:
             assert api.post(self.URL, payload).status_code == 201
             assert api.post(self.URL, payload).status_code == 429
         cache.clear()
+
+
+@pytest.mark.django_db
+class TestSitemap:
+    def test_lists_public_pages_and_only_published_posts(self, api, settings):
+        settings.FRONTEND_URL = 'https://bagdar.academy'
+        Post.objects.create(title='Жаңа оқу жылы', body='x', is_published=True)
+        Post.objects.create(title='Черновик', body='x', is_published=False)
+        Post.objects.create(title='Отложено', body='x', is_published=True,
+                            published_at=timezone.now() + timedelta(days=1))
+
+        res = api.get('/sitemap.xml')
+        assert res.status_code == 200
+        assert res['Content-Type'].startswith('application/xml')
+        xml = res.content.decode()
+        assert '<loc>https://bagdar.academy/</loc>' in xml
+        assert '<loc>https://bagdar.academy/news</loc>' in xml
+        assert f'<loc>https://bagdar.academy/news/{quote("жаңа-оқу-жылы")}</loc>' in xml
+        assert xml.count('<url>') == 3
+
+    def test_empty_site_still_valid(self, api):
+        res = api.get('/sitemap.xml')
+        assert res.status_code == 200
+        assert res.content.decode().count('<url>') == 2
