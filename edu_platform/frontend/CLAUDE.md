@@ -30,10 +30,16 @@ student1@fizmat.kz / StudentPassword123!, parent@fizmat.kz / ParentPassword123!.
 - `i18n/locales/{kk,ru}.ts` — ключи сообщений, типизированные объекты (`as const`).
 - `stores/locale.ts` — Pinia-обёртка (`useLocaleStore`): `current`, `options`, `select(locale)`. Читает/пишет `i18n.global` напрямую (не `useI18n()`), потому что используется и вне компонентов (например, `utils/format.ts`).
 - `components/ui/LangSwitcher.vue` — переключатель ҚАЗ/RU (пропс `dark` для тёмного фона). Уже стоит в `AppLayout.vue` (шапка) и `AuthCard.vue` (страница входа/регистрации).
-- `utils/format.ts` → `roleLabel(role)` — название роли на текущем языке (`roles.<role>` в локалях). Старый `roleLabels` (всегда RU) помечен `@deprecated`, оставлен для мест, ещё не переведённых.
+- `utils/format.ts` → `roleLabel(role)` — название роли на текущем языке (`roles.<role>`). Для `<select>` ролей — `roleOptions` (`v-for="(label, key) in roleOptions"`).
+- `utils/format.ts` → словари значений API (`courseTypeLabels`, `courseStatusLabels`, `questionTypeLabels`, `testModeLabels`, `attemptStatusLabels`, `submissionStatusLabels`, `attendanceLabels`, `orderStatusLabels`, `enrollmentStatusLabels`, `auditActionLabels`) — Proxy над ключами `labels.<группа>.<значение>`: работают и как `map[key]`, и в `v-for`, текст берётся из i18n при каждом чтении. Новое значение — добавь его в список ключей в `labelMap(...)` и в обе локали.
+- Даты: `fmtDate/fmtDateTime/fmtTime` — числовые (одинаковы для kk/ru). Словесные — `fmtDateLong` («24 қазан 2026 ж.»), `fmtDayMonth(v, short?)` («24 қазан» / «24 қаз.»), `fmtWeekday(v)` («дс» / «пн»). Казахские месяцы и дни недели заданы вручную — в Intl многих браузеров нет данных `kk`, поэтому `toLocaleDateString('kk')` не используем.
+- `router/index.ts` → `meta.title` — ключ `titles.*`; `document.title` переводится в `afterEach` и пересчитывается при смене языка (`watch(i18n.global.locale)`).
 - `layouts/navigation.ts` → `NavItem.labelKey` — ключ `nav.*`, не литеральный текст; в шаблоне `{{ $t(item.labelKey) }}`.
+- Текст с разметкой внутри (ссылка, `<code>`, `<strong>`) — через `<i18n-t keypath="…" tag="p" scope="global">` со слотом (`{link}`, `{name}` в сообщении), а не склейкой строк.
 
-**Текущий статус (2026-10):** сделана только инфраструктура и каркас (навигация, меню пользователя, вход/регистрация, названия ролей) — **полный перевод всех экранов ещё не сделан**, это следующий шаг. Остальные страницы (каталог, уроки, тесты, админка и т.д.) пока на литеральном русском.
+**Текущий статус (2026-10):** переведён весь статичный интерфейс — публичный сайт, вход/регистрация, кабинет всех ролей, тосты, `confirm()`/`prompt()`, заголовки вкладок, подписи статусов. Не переводятся данные с бэкенда: названия курсов, имена, тексты объявлений, **тексты уведомлений и сообщения об ошибках API** (они формируются на сервере на русском — это отдельная задача для бэкенда).
+
+**Где ключи:** общие — `ui.*` (кнопки «Удалить», «Все», `ui.minutes`, `ui.until`…), `labels.*` (значения API), `titles.*` (заголовки вкладок), дальше по экрану: `home`, `catalog`, `courseView`, `lessonView`, `take`, `attempt`, `assignment(s)`, `schedule`, `inbox`, `profile`, `orders`, `children`, `report`, `teach.*`, `admin.*` и т.д. Сообщения с параметрами — `{n}`, `{date}`, `{name}`; символы `@ | { }` в тексте не используй (это синтаксис vue-i18n).
 
 **Как переводить новый текст:** добавь ключ в оба файла `i18n/locales/{kk,ru}.ts` (не только в один — иначе `fallbackLocale` покажет русский для казахского), замени литерал в шаблоне на `{{ $t('раздел.ключ') }}` (или `:prop="$t(...)"` для атрибутов), для `<script setup>` — `const { t } = useI18n()`, вне компонентов — `i18n.global.t(...)` (как в `utils/format.ts`). Не переводи пользовательские данные с бэкенда (имена, названия курсов) — только статичный интерфейсный текст.
 
@@ -53,7 +59,7 @@ student1@fizmat.kz / StudentPassword123!, parent@fizmat.kz / ParentPassword123!.
 - Access-токен хранится только в памяти (`setAccessToken`). Refresh лежит в HttpOnly cookie, его ставит Django. Токены в localStorage не сохранять.
 - Ошибки API приходят в формате `{ error: { code, message, details } }`. Для текста ошибки используй `errorMessage(e)` из `api/http.ts`.
 - Списки пагинированы: `{ total, total_pages, page, page_size, results }` (тип `Paginated<T>`).
-- Тексты интерфейса на русском (позже добавим i18n: ru / kk / en).
+- Тексты интерфейса — только через i18n (`kk` + `ru`), см. «Локализация».
 - Защищённые страницы: `meta: { requiresAuth: true }` в роуте.
 
 ## Роли и что строить

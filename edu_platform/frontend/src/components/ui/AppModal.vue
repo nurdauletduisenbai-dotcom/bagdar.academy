@@ -10,7 +10,7 @@ const emit = defineEmits<{ close: [] }>()
     <div class="modal" :class="{ 'modal--wide': wide }" role="dialog" :aria-label="title">
       <header class="modal__header">
         <h2>{{ title }}</h2>
-        <button class="icon-btn" aria-label="Закрыть" @click="emit('close')"><AppIcon name="x" /></button>
+        <button class="icon-btn" :aria-label="$t('common.close')" @click="emit('close')"><AppIcon name="x" /></button>
       </header>
       <div class="modal__body"><slot /></div>
     </div>

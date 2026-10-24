@@ -53,12 +53,12 @@ function useDemo(account: DemoAccount) {
       <label>{{ $t('auth.email') }} <input v-model="email" type="email" autocomplete="email" placeholder="you@school.kz" required /></label>
       <label>{{ $t('auth.password') }} <input v-model="password" type="password" autocomplete="current-password" required /></label>
       <label v-if="needs2fa">
-        Код двухфакторной защиты (или резервный код)
+        {{ $t('login.code2fa') }}
         <input v-model="totpCode" inputmode="numeric" autocomplete="one-time-code" placeholder="123 456" required autofocus />
       </label>
       <p v-if="error" class="alert alert--error">{{ error }}</p>
       <button class="btn btn--lg btn--block" type="submit" :disabled="loading">
-        {{ loading ? 'Входим…' : needs2fa ? 'Продолжить' : $t('auth.submit') }}
+        {{ loading ? $t('login.signingIn') : needs2fa ? $t('ui.continue') : $t('auth.submit') }}
       </button>
       <div class="row row--between small">
         <RouterLink to="/forgot-password">{{ $t('auth.forgotPassword') }}</RouterLink>
@@ -70,12 +70,12 @@ function useDemo(account: DemoAccount) {
     <div v-if="showDemoAccounts" class="demo">
       <div class="eyebrow">{{ $t('auth.demoLogin') }}</div>
       <div class="pills">
-        <button v-for="a in demoAccounts" :key="a.email" type="button" class="pill" :title="`${a.email} — ${a.note}`"
+        <button v-for="a in demoAccounts" :key="a.email" type="button" class="pill" :title="`${a.email} — ${$t(`demo.${a.key}.note`)}`"
                 :disabled="loading" @click="useDemo(a)">
-          {{ a.role }}
+          {{ $t(`demo.${a.key}.role`) }}
         </button>
       </div>
-      <p class="muted small">Аккаунты создаются командой <code>make seed</code>. Наведите на кнопку — увидите, что проверить.</p>
+      <i18n-t keypath="login.demoHint" tag="p" scope="global" class="muted small"><template #cmd><code>make seed</code></template></i18n-t>
     </div>
   </AuthCard>
 </template>

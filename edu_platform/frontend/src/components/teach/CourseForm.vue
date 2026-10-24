@@ -23,29 +23,29 @@ const form = reactive<CoursePayload>({
 
 <template>
   <form class="form" @submit.prevent="emit('save', { ...form, grade_level: form.grade_level || null })">
-    <label>Название <input v-model="form.title" required /></label>
-    <label>Описание <textarea v-model="form.description" /></label>
+    <label>{{ $t('ui.title') }} <input v-model="form.title" required /></label>
+    <label>{{ $t('ui.description') }} <textarea v-model="form.description" /></label>
     <div class="form-row">
       <label>
-        Тип
+        {{ $t('teach.courseForm.type') }}
         <select v-model="form.type">
           <option v-for="(label, key) in courseTypeLabels" :key="key" :value="key">{{ label }}</option>
         </select>
       </label>
-      <label>Предмет <input v-model="form.subject" /></label>
-      <label>Класс <input v-model.number="form.grade_level" type="number" min="1" max="12" /></label>
+      <label>{{ $t('teach.courseForm.subject') }} <input v-model="form.subject" /></label>
+      <label>{{ $t('teach.courseForm.grade') }} <input v-model.number="form.grade_level" type="number" min="1" max="12" /></label>
     </div>
     <div class="form-row">
-      <label>Цена, ₸ (0 — бесплатно) <input v-model="form.price" type="number" min="0" step="1" /></label>
-      <label>Доступ после оплаты, дней <input v-model.number="form.access_days" type="number" min="1" /></label>
+      <label>{{ $t('teach.courseForm.price') }} <input v-model="form.price" type="number" min="0" step="1" /></label>
+      <label>{{ $t('teach.courseForm.accessDays') }} <input v-model.number="form.access_days" type="number" min="1" /></label>
       <label>
-        Статус
+        {{ $t('teach.courseForm.status') }}
         <select v-model="form.status">
           <option v-for="(label, key) in courseStatusLabels" :key="key" :value="key">{{ label }}</option>
         </select>
       </label>
     </div>
-    <label class="inline"><input v-model="form.is_free_preview_enabled" type="checkbox" /> Разрешить бесплатные превью-уроки</label>
-    <button class="btn" :disabled="busy" style="justify-self: start">Сохранить</button>
+    <label class="inline"><input v-model="form.is_free_preview_enabled" type="checkbox" /> {{ $t('teach.courseForm.freePreview') }}</label>
+    <button class="btn" :disabled="busy" style="justify-self: start">{{ $t('common.save') }}</button>
   </form>
 </template>

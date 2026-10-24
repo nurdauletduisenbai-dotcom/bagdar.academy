@@ -27,21 +27,21 @@ async function onSubmit() {
 </script>
 
 <template>
-  <AuthCard title="Регистрация по приглашению">
+  <AuthCard :title="$t('invite.title')">
     <div v-if="done" class="stack">
-      <div class="alert alert--success">Аккаунт создан.</div>
-      <RouterLink to="/login" class="btn">Войти</RouterLink>
+      <div class="alert alert--success">{{ $t('invite.created') }}</div>
+      <RouterLink to="/login" class="btn">{{ $t('auth.submit') }}</RouterLink>
     </div>
     <form v-else class="form" @submit.prevent="onSubmit">
-      <label>Код приглашения <input v-model="form.invite_token" required /></label>
+      <label>{{ $t('invite.code') }} <input v-model="form.invite_token" required /></label>
       <div class="form-row">
-        <label>Имя <input v-model="form.first_name" required /></label>
-        <label>Фамилия <input v-model="form.last_name" required /></label>
+        <label>{{ $t('ui.firstName') }} <input v-model="form.first_name" required /></label>
+        <label>{{ $t('ui.lastName') }} <input v-model="form.last_name" required /></label>
       </div>
       <label>Email <input v-model="form.email" type="email" required /></label>
-      <label>Пароль (от 10 символов) <input v-model="form.password" type="password" minlength="10" required /></label>
+      <label>{{ $t('ui.passwordMin') }} <input v-model="form.password" type="password" minlength="10" required /></label>
       <p v-if="error" class="alert alert--error">{{ error }}</p>
-      <button class="btn btn--lg btn--block">Создать аккаунт</button>
+      <button class="btn btn--lg btn--block">{{ $t('invite.createAccount') }}</button>
     </form>
   </AuthCard>
 </template>

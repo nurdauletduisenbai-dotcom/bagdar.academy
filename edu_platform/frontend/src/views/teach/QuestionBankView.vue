@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { questionsApi, testsApi } from '@/api/tests'
 import QuestionEditor from '@/components/teach/QuestionEditor.vue'
@@ -12,6 +13,8 @@ import StateBlock from '@/components/ui/StateBlock.vue'
 import { useAction, useAsync } from '@/composables/useAsync'
 import type { Question } from '@/types/api'
 import { questionTypeLabels } from '@/utils/format'
+
+const { t } = useI18n()
 
 const { act, busy } = useAction()
 const topics = useAsync(() => questionsApi.topics())
@@ -53,12 +56,12 @@ async function addSelectedToTest() {
   const ok = await act(async () => {
     for (const id of ids) await testsApi.addQuestion(testId, id, 1)
     return true
-  }, `Добавлено в тест: ${ids.length}`)
+  }, t('teach.bank.addedToTest', { n: ids.length }))
   if (ok) selected.value = new Set()
 }
 
 async function addTopic() {
-  if (await act(() => questionsApi.createTopic(topicForm), 'Тема создана')) {
+  if (await act(() => questionsApi.createTopic(topicForm), t('teach.bank.topicCreated'))) {
     topicForm.name = ''
     addingTopic.value = false
     topics.run()
@@ -67,7 +70,7 @@ async function addTopic() {
 
 async function save(payload: Partial<Question>) {
   const current = editing.value
-  const ok = await act(() => (current && current !== 'new' ? questionsApi.update(current.id, payload) : questionsApi.create(payload)), 'Вопрос сохранён')
+  const ok = await act(() => (current && current !== 'new' ? questionsApi.update(current.id, payload) : questionsApi.create(payload)), t('teach.bank.saved'))
   if (ok) {
     editing.value = null
     questions.run()
@@ -76,57 +79,57 @@ async function save(payload: Partial<Question>) {
 }
 
 async function remove(q: Question) {
-  if (!confirm('Удалить вопрос? Если он уже в тестах — будет перенесён в архив.')) return
-  if (await act(() => questionsApi.remove(q.id), 'Готово')) questions.run()
+  if (!confirm(t('teach.bank.confirmDelete'))) return
+  if (await act(() => questionsApi.remove(q.id), t('ui.done'))) questions.run()
 }
 </script>
 
 <template>
-  <PageHeader title="Банк вопросов" subtitle="Общий для всей школы — вопросы добавляются в тесты." />
+  <PageHeader :title="$t('titles.questionBank')" :subtitle="$t('teach.bank.subtitle')" />
 
   <div class="card card--flush bank">
     <aside class="topics">
-      <strong>Темы</strong>
+      <strong>{{ $t('teach.bank.topics') }}</strong>
       <StateBlock :loading="topics.loading.value" :error="topics.error.value" @retry="topics.run">
         <nav class="side-nav">
-          <button :class="{ active: filters.topic === '' }" @click="pickTopic('')"><span>Все</span><span>{{ totalAll }}</span></button>
+          <button :class="{ active: filters.topic === '' }" @click="pickTopic('')"><span>{{ $t('ui.all') }}</span><span>{{ totalAll }}</span></button>
           <button v-for="t in topics.data.value ?? []" :key="t.id" :class="{ active: filters.topic === t.id }" @click="pickTopic(t.id)">
             <span>{{ t.name }}</span><span>{{ t.questions_count }}</span>
           </button>
         </nav>
       </StateBlock>
       <form v-if="addingTopic" class="form" @submit.prevent="addTopic">
-        <input v-model="topicForm.subject" placeholder="Предмет" required />
-        <input v-model="topicForm.name" placeholder="Тема" required />
-        <button class="btn btn--sm" :disabled="busy">Создать</button>
+        <input v-model="topicForm.subject" :placeholder="$t('teach.courseForm.subject')" required />
+        <input v-model="topicForm.name" :placeholder="$t('teach.groupsTab.topic')" required />
+        <button class="btn btn--sm" :disabled="busy">{{ $t('ui.create') }}</button>
       </form>
-      <button v-else class="dropzone add-topic" @click="addingTopic = true">+ тема</button>
+      <button v-else class="dropzone add-topic" @click="addingTopic = true">{{ $t('teach.bank.addTopic') }}</button>
     </aside>
 
     <section class="questions">
       <form class="row" @submit.prevent="apply">
         <div class="search" style="flex: 1; min-width: 200px">
-          <AppIcon name="search" /><input v-model="filters.search" type="search" placeholder="Поиск…" aria-label="Поиск вопросов" />
+          <AppIcon name="search" /><input v-model="filters.search" type="search" :placeholder="$t('teach.bank.searchPh')" :aria-label="$t('teach.bank.searchLabel')" />
         </div>
-        <select v-model="filters.type" style="width: auto" aria-label="Тип" @change="apply">
-          <option value="">Тип</option>
+        <select v-model="filters.type" style="width: auto" :aria-label="$t('teach.questionEditor.type')" @change="apply">
+          <option value="">{{ $t('teach.questionEditor.type') }}</option>
           <option v-for="(label, key) in questionTypeLabels" :key="key" :value="key">{{ label }}</option>
         </select>
-        <select v-model="filters.difficulty" style="width: auto" aria-label="Сложность" @change="apply">
-          <option value="">Сложн.</option>
+        <select v-model="filters.difficulty" style="width: auto" :aria-label="$t('teach.bank.difficulty')" @change="apply">
+          <option value="">{{ $t('teach.bank.diffShort') }}</option>
           <option v-for="d in 5" :key="d" :value="d">{{ d }}</option>
         </select>
-        <button type="button" class="btn" :disabled="!topics.data.value?.length" @click="editing = 'new'">+ Вопрос</button>
+        <button type="button" class="btn" :disabled="!topics.data.value?.length" @click="editing = 'new'">{{ $t('teach.bank.addQuestion') }}</button>
       </form>
 
       <StateBlock :loading="questions.loading.value" :error="questions.error.value"
                   :empty="!questions.data.value?.results.length" @retry="questions.run">
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th style="width: 32px"></th><th>Вопрос</th><th>Тип</th><th>Сл.</th><th>В тестах</th><th></th></tr></thead>
+            <thead><tr><th style="width: 32px"></th><th>{{ $t('teach.bank.colQuestion') }}</th><th>{{ $t('teach.questionEditor.type') }}</th><th>{{ $t('teach.bank.colDiff') }}</th><th>{{ $t('teach.bank.colInTests') }}</th><th></th></tr></thead>
             <tbody>
               <tr v-for="q in questions.data.value?.results ?? []" :key="q.id">
-                <td><input type="checkbox" :checked="selected.has(q.id)" :aria-label="`Выбрать вопрос ${q.id}`" @change="toggle(q.id)" /></td>
+                <td><input type="checkbox" :checked="selected.has(q.id)" :aria-label="$t('teach.bank.select', { id: q.id })" @change="toggle(q.id)" /></td>
                 <td class="q-text"><MathText :text="q.text" /></td>
                 <td class="small">{{ questionTypeLabels[q.type] }}</td>
                 <td>{{ q.difficulty }}</td>
@@ -143,18 +146,18 @@ async function remove(q: Question) {
       </StateBlock>
 
       <div v-if="selected.size" class="selection">
-        <span>Выбрано {{ selected.size }} · Добавить в тест</span>
-        <select v-model="targetTest" aria-label="Тест">
-          <option value="">— выберите тест —</option>
+        <span>{{ $t('teach.bank.selected', { n: selected.size }) }}</span>
+        <select v-model="targetTest" :aria-label="$t('titles.test')">
+          <option value="">{{ $t('teach.bank.chooseTest') }}</option>
           <option v-for="t in tests.data.value?.results ?? []" :key="t.id" :value="t.id">{{ t.title }}</option>
         </select>
-        <button class="btn btn--sm" :disabled="busy || !targetTest" @click="addSelectedToTest">Добавить</button>
-        <button class="btn btn--text btn--sm" @click="selected = new Set()">Сбросить</button>
+        <button class="btn btn--sm" :disabled="busy || !targetTest" @click="addSelectedToTest">{{ $t('ui.add') }}</button>
+        <button class="btn btn--text btn--sm" @click="selected = new Set()">{{ $t('teach.bank.reset') }}</button>
       </div>
     </section>
   </div>
 
-  <AppModal v-if="editing" :title="editing === 'new' ? 'Новый вопрос' : 'Изменить вопрос'" wide @close="editing = null">
+  <AppModal v-if="editing" :title="editing === 'new' ? $t('teach.bank.new') : $t('teach.bank.edit')" wide @close="editing = null">
     <QuestionEditor :question="editing === 'new' ? undefined : editing" :topics="topics.data.value ?? []" :busy="busy" @save="save" />
   </AppModal>
 </template>

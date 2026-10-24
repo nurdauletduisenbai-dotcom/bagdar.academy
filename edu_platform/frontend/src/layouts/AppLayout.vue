@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
 import AppIcon from '@/components/ui/AppIcon.vue'
@@ -11,6 +12,8 @@ import { useToast } from '@/stores/toast'
 import { roleLabel } from '@/utils/format'
 
 import { menuLinks, topLinks } from './navigation'
+
+const { t } = useI18n()
 
 const auth = useAuthStore()
 const notifications = useNotificationsStore()
@@ -49,7 +52,7 @@ function isActive(to: string) {
 async function onOrgChange(event: Event) {
   const orgId = Number((event.target as HTMLSelectElement).value)
   await auth.switchOrg(orgId)
-  toast.info(`Организация: ${auth.currentOrg?.name}`)
+  toast.info(t('layout.orgSwitched', { name: auth.currentOrg?.name ?? '' }))
   menuOpen.value = false
   router.push('/home')
 }
@@ -80,7 +83,7 @@ onUnmounted(() => {
 <template>
   <header class="topnav">
     <div class="topnav__inner">
-      <button class="icon-btn burger" aria-label="Меню" @click="mobileOpen = !mobileOpen"><AppIcon name="menu" /></button>
+      <button class="icon-btn burger" :aria-label="$t('public.menu')" @click="mobileOpen = !mobileOpen"><AppIcon name="menu" /></button>
       <RouterLink to="/home" class="brand">bagdar<span class="brand__dot">.</span></RouterLink>
 
       <nav class="topnav__links" :class="{ open: mobileOpen }">
@@ -104,7 +107,7 @@ onUnmounted(() => {
         </RouterLink>
 
         <div ref="menuRef" class="user-menu">
-          <button class="avatar" :aria-expanded="menuOpen" aria-label="Меню пользователя" @click="menuOpen = !menuOpen">
+          <button class="avatar" :aria-expanded="menuOpen" :aria-label="$t('layout.userMenu')" @click="menuOpen = !menuOpen">
             {{ initials }}
           </button>
           <div v-if="menuOpen" class="dropdown">
@@ -135,8 +138,8 @@ onUnmounted(() => {
 
   <div v-if="auth.user && !auth.user.is_verified" class="verify-bar">
     <div class="container row row--between">
-      <span>Email не подтверждён. Письмо со ссылкой — в почте (локально: MailHog, localhost:8025).</span>
-      <RouterLink to="/profile" class="btn btn--sm btn--dark">Отправить ещё раз</RouterLink>
+      <span>{{ $t('layout.emailNotVerified') }}</span>
+      <RouterLink to="/profile" class="btn btn--sm btn--dark">{{ $t('layout.resendEmail') }}</RouterLink>
     </div>
   </div>
 

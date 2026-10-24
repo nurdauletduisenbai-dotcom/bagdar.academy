@@ -31,32 +31,32 @@ async function onSubmit() {
 </script>
 
 <template>
-  <AuthCard title="Регистрация">
+  <AuthCard :title="$t('titles.register')">
     <div v-if="done" class="stack">
       <div class="alert alert--success">{{ done }}</div>
-      <p class="muted small">Локально письма приходят в MailHog: <a href="http://localhost:8025" target="_blank">localhost:8025</a></p>
-      <RouterLink to="/login" class="btn">Войти</RouterLink>
+      <i18n-t keypath="register.mailhog" tag="p" scope="global" class="muted small"><template #link><a href="http://localhost:8025" target="_blank">localhost:8025</a></template></i18n-t>
+      <RouterLink to="/login" class="btn">{{ $t('auth.submit') }}</RouterLink>
     </div>
     <form v-else class="form" @submit.prevent="onSubmit">
       <div class="form-row">
-        <label>Имя <input v-model="form.first_name" required /></label>
-        <label>Фамилия <input v-model="form.last_name" required /></label>
+        <label>{{ $t('ui.firstName') }} <input v-model="form.first_name" required /></label>
+        <label>{{ $t('ui.lastName') }} <input v-model="form.last_name" required /></label>
       </div>
       <label>Email <input v-model="form.email" type="email" required /></label>
-      <label>Пароль (от 10 символов) <input v-model="form.password" type="password" minlength="10" required /></label>
+      <label>{{ $t('ui.passwordMin') }} <input v-model="form.password" type="password" minlength="10" required /></label>
       <label>
-        Я регистрируюсь как
+        {{ $t('register.as') }}
         <select v-model="form.role">
-          <option value="student">Ученик</option>
-          <option value="parent">Родитель</option>
+          <option value="student">{{ $t("roles.student") }}</option>
+          <option value="parent">{{ $t("roles.parent") }}</option>
         </select>
       </label>
-      <label>Код школы (slug) <input v-model="form.org_slug" required /></label>
-      <label class="inline"><input v-model="form.is_minor" type="checkbox" /> Мне меньше 14 лет</label>
-      <label v-if="form.is_minor" class="inline"><input v-model="form.parent_consent" type="checkbox" /> Родитель согласен</label>
+      <label>{{ $t('register.orgSlug') }} <input v-model="form.org_slug" required /></label>
+      <label class="inline"><input v-model="form.is_minor" type="checkbox" /> {{ $t('register.minor') }}</label>
+      <label v-if="form.is_minor" class="inline"><input v-model="form.parent_consent" type="checkbox" /> {{ $t('register.consent') }}</label>
       <p v-if="error" class="alert alert--error">{{ error }}</p>
-      <button class="btn btn--lg btn--block" :disabled="loading">Зарегистрироваться</button>
-      <p class="small muted">Учителя и кураторы регистрируются по приглашению. <RouterLink to="/login">Уже есть аккаунт</RouterLink></p>
+      <button class="btn btn--lg btn--block" :disabled="loading">{{ $t('register.submit') }}</button>
+      <p class="small muted">{{ $t('register.staffNote') }} <RouterLink to="/login">{{ $t('register.haveAccount') }}</RouterLink></p>
     </form>
   </AuthCard>
 </template>

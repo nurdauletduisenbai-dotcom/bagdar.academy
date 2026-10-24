@@ -1,5 +1,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 
+import { i18n } from '@/i18n'
 import type { ApiError, RefreshResponse } from '@/types/api'
 
 // Access-токен живёт только в памяти. Refresh-токен — в HttpOnly cookie,
@@ -74,7 +75,7 @@ export function errorMessage(error: unknown): string {
   if (axios.isAxiosError<ApiError>(error)) {
     return error.response?.data?.error?.message ?? error.message
   }
-  return 'Неизвестная ошибка'
+  return i18n.global.t('ui.unknownError')
 }
 
 /** Скачать защищённый файл (download_url из API) с токеном и сохранить на диск */

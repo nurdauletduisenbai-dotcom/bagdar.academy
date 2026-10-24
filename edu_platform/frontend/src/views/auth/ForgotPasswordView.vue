@@ -21,16 +21,16 @@ async function onSubmit() {
 </script>
 
 <template>
-  <AuthCard title="Восстановление пароля">
+  <AuthCard :title="$t('titles.forgotPassword')">
     <div v-if="message" class="stack">
       <div class="alert alert--success">{{ message }}</div>
-      <p class="muted small">Локально письмо смотрите в MailHog: <a href="http://localhost:8025" target="_blank">localhost:8025</a></p>
+      <i18n-t keypath="forgot.mailhog" tag="p" scope="global" class="muted small"><template #link><a href="http://localhost:8025" target="_blank">localhost:8025</a></template></i18n-t>
     </div>
     <form v-else class="form" @submit.prevent="onSubmit">
       <label>Email <input v-model="email" type="email" required /></label>
       <p v-if="error" class="alert alert--error">{{ error }}</p>
-      <button class="btn btn--lg btn--block">Отправить ссылку</button>
-      <RouterLink to="/login" class="small">← Ко входу</RouterLink>
+      <button class="btn btn--lg btn--block">{{ $t('forgot.send') }}</button>
+      <RouterLink to="/login" class="small">{{ $t('forgot.toLogin') }}</RouterLink>
     </form>
   </AuthCard>
 </template>

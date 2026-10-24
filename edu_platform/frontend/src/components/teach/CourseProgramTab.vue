@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { lessonsApi, sectionsApi } from '@/api/content'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import StateBlock from '@/components/ui/StateBlock.vue'
 import { useAction, useAsync } from '@/composables/useAsync'
 import type { Lesson, Section } from '@/types/api'
+
+const { t } = useI18n()
 
 /** Конструктор курса (вайрфрейм 1l): дерево разделов/уроков + редактор выбранного урока */
 const props = defineProps<{ courseId: number }>()
@@ -48,13 +51,13 @@ async function addLesson(sectionId: number) {
 }
 
 async function renameSection(s: Section) {
-  const title = prompt('Название раздела', s.title)
+  const title = prompt(t('teach.programTab.sectionName'), s.title)
   if (title && (await act(() => sectionsApi.update(s.id, { title })))) sections.run()
 }
 
 async function removeSection(s: Section) {
-  if (!confirm(`Удалить раздел «${s.title}» вместе с уроками?`)) return
-  if (await act(() => sectionsApi.remove(s.id), 'Раздел удалён')) {
+  if (!confirm(t('teach.programTab.confirmDelete', { title: s.title }))) return
+  if (await act(() => sectionsApi.remove(s.id), t('teach.programTab.sectionDeleted'))) {
     sections.run()
     lessons.run()
   }
@@ -64,7 +67,7 @@ async function saveLesson(publishNow = false) {
   if (!selected.value) return
   const payload: Partial<Lesson> = { ...form }
   if (publishNow) payload.publish_at = null
-  if (await act(() => lessonsApi.update(selected.value!.id, payload), publishNow ? 'Урок опубликован' : 'Урок сохранён')) lessons.run()
+  if (await act(() => lessonsApi.update(selected.value!.id, payload), publishNow ? t('teach.programTab.published') : t('teach.programTab.saved'))) lessons.run()
 }
 </script>
 
@@ -72,56 +75,56 @@ async function saveLesson(publishNow = false) {
   <StateBlock :loading="sections.loading.value" :error="sections.error.value" @retry="sections.run">
     <div class="card card--flush builder">
       <aside class="tree">
-        <strong>Программа</strong>
+        <strong>{{ $t('teach.programTab.program') }}</strong>
         <div v-for="s in sections.data.value ?? []" :key="s.id" class="tree__section">
           <div class="tree__section-head">
             <span class="row"><AppIcon name="chevron-down" :size="14" /> {{ s.title }}</span>
             <span class="tree__tools">
-              <button class="btn btn--text btn--sm" title="Переименовать" @click="renameSection(s)"><AppIcon name="edit" :size="13" /></button>
-              <button class="btn btn--text btn--sm" title="Удалить" @click="removeSection(s)"><AppIcon name="trash" :size="13" /></button>
+              <button class="btn btn--text btn--sm" :title="$t('teach.programTab.rename')" @click="renameSection(s)"><AppIcon name="edit" :size="13" /></button>
+              <button class="btn btn--text btn--sm" :title="$t('ui.delete')" @click="removeSection(s)"><AppIcon name="trash" :size="13" /></button>
             </span>
           </div>
           <nav class="side-nav">
             <button v-for="l in lessonsOf(s.id)" :key="l.id" :class="{ active: selectedId === l.id }" @click="selectedId = l.id">
               <span>{{ l.title }}</span>
-              <span v-if="!l.is_published" class="draft">черновик</span>
-              <span v-else class="live" title="Опубликован" />
+              <span v-if="!l.is_published" class="draft">{{ $t('teach.programTab.draft') }}</span>
+              <span v-else class="live" :title="$t('labels.courseStatus.published')" />
             </button>
           </nav>
           <form v-if="adding === s.id" class="row" @submit.prevent="addLesson(s.id)">
-            <input v-model="newTitle" placeholder="Название урока" required autofocus style="height: 36px" />
+            <input v-model="newTitle" :placeholder="$t('teach.programTab.lessonName')" required autofocus style="height: 36px" />
             <button class="btn btn--sm" :disabled="busy">OK</button>
           </form>
-          <button v-else class="btn btn--text btn--sm add" @click="adding = s.id; newTitle = ''">+ урок</button>
+          <button v-else class="btn btn--text btn--sm add" @click="adding = s.id; newTitle = ''">{{ $t('teach.programTab.addLesson') }}</button>
         </div>
         <form v-if="adding === 'section'" class="row" @submit.prevent="addSection">
-          <input v-model="newTitle" placeholder="Название раздела" required autofocus style="height: 36px" />
+          <input v-model="newTitle" :placeholder="$t('teach.programTab.sectionName')" required autofocus style="height: 36px" />
           <button class="btn btn--sm" :disabled="busy">OK</button>
         </form>
-        <button v-else class="dropzone add-section" @click="adding = 'section'; newTitle = ''">+ раздел</button>
+        <button v-else class="dropzone add-section" @click="adding = 'section'; newTitle = ''">{{ $t('teach.programTab.addSection') }}</button>
       </aside>
 
       <section class="editor">
         <template v-if="selected">
-          <input v-model="form.title" class="editor__title" aria-label="Название урока" />
+          <input v-model="form.title" class="editor__title" :aria-label="$t('teach.programTab.lessonName')" />
           <div class="editor__adds">
             <RouterLink :to="`/teach/lessons/${selected.id}`" class="dropzone add-tile"><AppIcon name="play" :size="16" /> + YouTube</RouterLink>
-            <RouterLink :to="`/teach/lessons/${selected.id}`" class="dropzone add-tile"><AppIcon name="file" :size="16" /> + файл</RouterLink>
-            <button class="dropzone add-tile" @click="emit('tab', 'tests')"><AppIcon name="check" :size="16" /> + тест</button>
+            <RouterLink :to="`/teach/lessons/${selected.id}`" class="dropzone add-tile"><AppIcon name="file" :size="16" /> {{ $t('teach.programTab.addFile') }}</RouterLink>
+            <button class="dropzone add-tile" @click="emit('tab', 'tests')"><AppIcon name="check" :size="16" /> {{ $t('teach.programTab.addTest') }}</button>
           </div>
           <div class="row row--between">
-            <label class="inline"><input v-model="form.is_free_preview" type="checkbox" /> бесплатное превью</label>
+            <label class="inline"><input v-model="form.is_free_preview" type="checkbox" /> {{ $t('teach.programTab.freePreview') }}</label>
             <div class="row">
-              <RouterLink :to="`/lessons/${selected.id}`" class="btn btn--text btn--sm">Как видит ученик</RouterLink>
-              <button class="btn btn--ghost btn--sm" :disabled="busy" @click="saveLesson()">Сохранить</button>
-              <button v-if="!selected.is_published" class="btn btn--sm" :disabled="busy" @click="saveLesson(true)">Опубликовать</button>
+              <RouterLink :to="`/lessons/${selected.id}`" class="btn btn--text btn--sm">{{ $t('teach.programTab.asStudent') }}</RouterLink>
+              <button class="btn btn--ghost btn--sm" :disabled="busy" @click="saveLesson()">{{ $t('common.save') }}</button>
+              <button v-if="!selected.is_published" class="btn btn--sm" :disabled="busy" @click="saveLesson(true)">{{ $t('teach.programTab.publish') }}</button>
             </div>
           </div>
           <p class="muted small">
-            Видео, материалы, дату публикации и порядок — в <RouterLink :to="`/teach/lessons/${selected.id}`">полном редакторе урока</RouterLink>.
+            <i18n-t keypath="teach.programTab.fullEditorHint" scope="global"><template #link><RouterLink :to="`/teach/lessons/${selected.id}`">{{ $t('teach.programTab.fullEditor') }}</RouterLink></template></i18n-t>
           </p>
         </template>
-        <p v-else class="muted">Добавьте раздел и урок слева, чтобы начать.</p>
+        <p v-else class="muted">{{ $t('teach.programTab.empty') }}</p>
       </section>
     </div>
   </StateBlock>

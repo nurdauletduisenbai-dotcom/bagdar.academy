@@ -43,7 +43,7 @@ function setPair(optionId: number, target: string) {
           <MathText :text="opt.text" />
         </button>
       </div>
-      <span v-if="question.type === 'multi'" class="muted small">Можно выбрать несколько вариантов.</span>
+      <span v-if="question.type === 'multi'" class="muted small">{{ $t('questionInput.multiHint') }}</span>
     </template>
 
     <template v-else-if="question.type === 'match'">
@@ -51,7 +51,7 @@ function setPair(optionId: number, target: string) {
         <MathText :text="opt.text" class="match__left" />
         <select :value="pairs[String(opt.id)] ?? ''" :disabled="disabled"
                 @change="setPair(opt.id, ($event.target as HTMLSelectElement).value)">
-          <option value="">— выберите —</option>
+          <option value="">{{ $t('questionInput.choose') }}</option>
           <option v-for="t in question.match_targets ?? []" :key="t" :value="t">{{ t }}</option>
         </select>
       </div>
@@ -59,10 +59,10 @@ function setPair(optionId: number, target: string) {
 
     <input v-else-if="question.type === 'short' || question.type === 'number'" :value="text" :disabled="disabled"
            :inputmode="question.type === 'number' ? 'decimal' : 'text'"
-           :placeholder="question.type === 'number' ? 'Введите число' : 'Ваш ответ'" class="short"
+           :placeholder="question.type === 'number' ? $t('questionInput.enterNumber') : $t('questionInput.yourAnswer')" class="short"
            @input="emit('update:text', ($event.target as HTMLInputElement).value)" />
 
-    <textarea v-else :value="text" :disabled="disabled" placeholder="Развёрнутый ответ — проверит учитель"
+    <textarea v-else :value="text" :disabled="disabled" :placeholder="$t('questionInput.openPlaceholder')"
               @input="emit('update:text', ($event.target as HTMLTextAreaElement).value)" />
   </div>
 </template>

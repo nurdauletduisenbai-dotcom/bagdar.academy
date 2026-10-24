@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { assignmentsApi } from '@/api/assignments'
 import PageHeader from '@/components/ui/PageHeader.vue'
@@ -8,6 +9,8 @@ import { useAsync } from '@/composables/useAsync'
 import { useAuthStore } from '@/stores/auth'
 import type { Assignment } from '@/types/api'
 import { fmtDateTime } from '@/utils/format'
+
+const { t } = useI18n()
 
 const auth = useAuthStore()
 const list = useAsync(() => assignmentsApi.list())
@@ -25,9 +28,9 @@ const columns = computed(() => {
     else graded.push(a)
   }
   return [
-    { key: 'todo', title: 'Нужно сдать', items: todo },
-    { key: 'review', title: 'На проверке', items: review },
-    { key: 'graded', title: 'Проверено', items: graded },
+    { key: 'todo', title: t('assignments.colTodo'), items: todo },
+    { key: 'review', title: t('assignments.colReview'), items: review },
+    { key: 'graded', title: t('assignments.colGraded'), items: graded },
   ]
 })
 
@@ -40,11 +43,11 @@ function cardClass(a: Assignment) {
 </script>
 
 <template>
-  <PageHeader title="Задания">
-    <RouterLink v-if="auth.isTeacher" to="/teach/submissions" class="btn">Проверка работ</RouterLink>
+  <PageHeader :title="$t('titles.assignments')">
+    <RouterLink v-if="auth.isTeacher" to="/teach/submissions" class="btn">{{ $t('titles.submissions') }}</RouterLink>
   </PageHeader>
 
-  <StateBlock :loading="list.loading.value" :error="list.error.value" :empty="!items.length" empty-text="Заданий нет" @retry="list.run">
+  <StateBlock :loading="list.loading.value" :error="list.error.value" :empty="!items.length" :empty-text="$t('assignments.empty')" @retry="list.run">
     <!-- Ученик: доска -->
     <div v-if="auth.isStudent" class="board">
       <section v-for="col in columns" :key="col.key" class="board__col">
@@ -52,26 +55,26 @@ function cardClass(a: Assignment) {
         <RouterLink v-for="a in col.items" :key="a.id" :to="`/assignments/${a.id}`" class="card card--link task" :class="cardClass(a)">
           <strong>{{ a.title }}</strong>
           <span class="small muted">
-            <template v-if="a.my_submission?.status === 'graded'">{{ a.my_submission.score }}/{{ a.max_score }}<template v-if="a.my_submission.feedback"> · есть комментарий</template></template>
-            <template v-else-if="a.my_submission?.status === 'returned'">на доработку</template>
-            <template v-else-if="a.my_submission">сдано {{ fmtDateTime(a.my_submission.submitted_at) }}</template>
-            <template v-else>{{ a.is_overdue ? 'просрочено · ' : 'до ' }}{{ fmtDateTime(a.deadline) }}</template>
+            <template v-if="a.my_submission?.status === 'graded'">{{ a.my_submission.score }}/{{ a.max_score }}<template v-if="a.my_submission.feedback">{{ $t('assignments.hasComment') }}</template></template>
+            <template v-else-if="a.my_submission?.status === 'returned'">{{ $t('assignments.returned') }}</template>
+            <template v-else-if="a.my_submission">{{ $t('assignment.submittedAt', { date: fmtDateTime(a.my_submission.submitted_at) }) }}</template>
+            <template v-else>{{ a.is_overdue ? $t('assignments.overdueDate', { date: fmtDateTime(a.deadline) }) : $t('ui.until', { date: fmtDateTime(a.deadline) }) }}</template>
           </span>
         </RouterLink>
-        <p v-if="!col.items.length" class="muted small empty">пусто</p>
+        <p v-if="!col.items.length" class="muted small empty">{{ $t('assignments.empty2') }}</p>
       </section>
     </div>
 
     <!-- Учитель / админ: таблица -->
     <div v-else class="card card--flush table-wrap">
       <table class="table">
-        <thead><tr><th>Задание</th><th>Дедлайн</th><th>Сдач</th><th></th></tr></thead>
+        <thead><tr><th>{{ $t('titles.assignment') }}</th><th>{{ $t('assignment.deadline') }}</th><th>{{ $t('assignments.colSubs') }}</th><th></th></tr></thead>
         <tbody>
           <tr v-for="a in items" :key="a.id">
             <td><RouterLink :to="`/assignments/${a.id}`">{{ a.title }}</RouterLink></td>
             <td :class="{ error: a.is_overdue }">{{ fmtDateTime(a.deadline) }}</td>
             <td>{{ a.submissions_count ?? 0 }}</td>
-            <td><RouterLink :to="{ path: '/teach/submissions', query: { assignment: a.id } }" class="btn btn--ghost btn--sm">Проверить</RouterLink></td>
+            <td><RouterLink :to="{ path: '/teach/submissions', query: { assignment: a.id } }" class="btn btn--ghost btn--sm">{{ $t('teach.assignmentsTab.check') }}</RouterLink></td>
           </tr>
         </tbody>
       </table>

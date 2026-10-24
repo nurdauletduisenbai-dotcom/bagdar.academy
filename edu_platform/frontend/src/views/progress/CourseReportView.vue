@@ -21,19 +21,19 @@ const kind = (s: string) => (s === 'graded' ? 'badge--success' : s === 'overdue'
       <section class="band page-band head">
         <ProgressRing :value="report.data.value.percent_completed" :size="104" dark />
         <div class="head__body">
-          <RouterLink :to="`/courses/${courseId}`" class="back small"><AppIcon name="arrow-left" :size="14" /> К курсу</RouterLink>
-          <div class="eyebrow">Отчёт об успеваемости</div>
+          <RouterLink :to="`/courses/${courseId}`" class="back small"><AppIcon name="arrow-left" :size="14" /> {{ $t('ui.toCourse') }}</RouterLink>
+          <div class="eyebrow">{{ $t('report.eyebrow') }}</div>
           <h1>{{ report.data.value.course_title }}</h1>
           <p class="muted">
-            уроков {{ report.data.value.lessons_completed_count }} из {{ report.data.value.total_lessons_count }} ·
-            средний балл тестов {{ report.data.value.average_test_score }}%
+            {{ $t('report.lessons', { done: report.data.value.lessons_completed_count, total: report.data.value.total_lessons_count }) }} ·
+            {{ $t('report.avg', { avg: report.data.value.average_test_score }) }}
           </p>
         </div>
       </section>
 
       <div class="grid--2" style="align-items: start">
         <section class="card">
-          <h2>Уроки</h2>
+          <h2>{{ $t('report.lessonsH') }}</h2>
           <ul class="list-lines">
             <li v-for="l in report.data.value.lessons" :key="l.id" class="row row--between">
               <span class="row"><AppIcon :name="l.is_completed ? 'check' : 'circle'" :size="14" :class="{ ok: l.is_completed }" /> {{ l.title }}</span>
@@ -43,23 +43,23 @@ const kind = (s: string) => (s === 'graded' ? 'badge--success' : s === 'overdue'
         </section>
         <div class="stack">
           <section class="card">
-            <h2>Тесты</h2>
-            <p v-if="!report.data.value.tests.length" class="muted small">Тестов нет.</p>
+            <h2>{{ $t('report.testsH') }}</h2>
+            <p v-if="!report.data.value.tests.length" class="muted small">{{ $t('lessonView.noTests') }}</p>
             <ul class="list-lines">
               <li v-for="t in report.data.value.tests" :key="t.id" class="row row--between">
-                <span>{{ t.title }} <span class="muted small">· попыток {{ t.attempts }}</span></span>
+                <span>{{ t.title }} <span class="muted small">· {{ $t('courseView.attempts', { n: t.attempts }) }}</span></span>
                 <span class="badge" :class="t.passed ? 'badge--success' : t.best_score_pct === null ? '' : 'badge--danger'">
-                  {{ t.best_score_pct === null ? 'не сдан' : `${t.best_score_pct}%` }}
+                  {{ t.best_score_pct === null ? $t('report.notPassed') : `${t.best_score_pct}%` }}
                 </span>
               </li>
             </ul>
           </section>
           <section class="card">
-            <h2>Задания</h2>
-            <p v-if="!report.data.value.assignments.length" class="muted small">Заданий нет.</p>
+            <h2>{{ $t('report.assignmentsH') }}</h2>
+            <p v-if="!report.data.value.assignments.length" class="muted small">{{ $t('report.noAssignments') }}</p>
             <ul class="list-lines">
               <li v-for="a in report.data.value.assignments" :key="a.id" class="row row--between">
-                <span>{{ a.title }} <span class="muted small">· до {{ fmtDateTime(a.deadline) }}</span></span>
+                <span>{{ a.title }} <span class="muted small">· {{ $t('ui.until', { date: fmtDateTime(a.deadline) }) }}</span></span>
                 <span class="row">
                   <strong v-if="a.score !== null" class="small">{{ a.score }}/{{ a.max_score }}</strong>
                   <span class="badge" :class="kind(a.status)">{{ submissionStatusLabels[a.status] }}</span>
@@ -68,11 +68,11 @@ const kind = (s: string) => (s === 'graded' ? 'badge--success' : s === 'overdue'
             </ul>
           </section>
           <section class="card">
-            <h2>Посещаемость</h2>
+            <h2>{{ $t('report.attendanceH') }}</h2>
             <div class="pills">
               <span v-for="(n, status) in report.data.value.attendance" :key="status" class="pill">{{ attendanceLabels[status] }}: {{ n }}</span>
             </div>
-            <p v-if="!Object.keys(report.data.value.attendance).length" class="muted small">Отметок нет.</p>
+            <p v-if="!Object.keys(report.data.value.attendance).length" class="muted small">{{ $t('report.noMarks') }}</p>
           </section>
         </div>
       </div>

@@ -36,25 +36,25 @@ const reportLink = (courseId: number) =>
 <template>
   <div class="stack">
     <div class="kpis">
-      <div class="card kpi"><span class="stat">{{ lessonsDone }}</span><span class="muted small">уроков пройдено</span></div>
-      <div class="card kpi"><span class="stat">{{ avgScore }}%</span><span class="muted small">ср. балл тестов</span></div>
-      <div class="card kpi"><span class="stat">{{ hwDone }}</span><span class="muted small">ДЗ сдано</span></div>
-      <div class="card kpi"><span class="stat">{{ attendance === null ? '—' : `${attendance}%` }}</span><span class="muted small">посещаемость</span></div>
+      <div class="card kpi"><span class="stat">{{ lessonsDone }}</span><span class="muted small">{{ $t('progressSummary.lessonsDone') }}</span></div>
+      <div class="card kpi"><span class="stat">{{ avgScore }}%</span><span class="muted small">{{ $t('progressSummary.avgScore') }}</span></div>
+      <div class="card kpi"><span class="stat">{{ hwDone }}</span><span class="muted small">{{ $t('progressSummary.hwDone') }}</span></div>
+      <div class="card kpi"><span class="stat">{{ attendance === null ? '—' : `${attendance}%` }}</span><span class="muted small">{{ $t('progressSummary.attendance') }}</span></div>
     </div>
 
     <section class="card">
-      <h2>Курсы</h2>
+      <h2>{{ $t('progressSummary.courses') }}</h2>
       <ul class="list-lines">
         <li v-for="r in reports" :key="r.course_id" class="course-row">
           <RouterLink :to="reportLink(r.course_id)">{{ r.course_title }}</RouterLink>
           <ProgressBar :value="r.percent_completed" />
-          <span class="small">{{ r.percent_completed }}% · ср. {{ r.average_test_score }}%</span>
+          <span class="small">{{ $t('progressSummary.courseRow', { pct: r.percent_completed, avg: r.average_test_score }) }}</span>
         </li>
       </ul>
     </section>
 
     <section v-if="testBars.length" class="card">
-      <h2>Лучшие результаты тестов</h2>
+      <h2>{{ $t('progressSummary.bestResults') }}</h2>
       <div class="bars">
         <div v-for="(b, i) in testBars" :key="i" class="bar" :title="`${b.title}: ${b.value}%`">
           <span class="bar__value small">{{ Math.round(b.value) }}%</span>

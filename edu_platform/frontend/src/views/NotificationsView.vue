@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import { notificationsApi } from '@/api/notifications'
@@ -10,6 +11,9 @@ import { useAction, useAsync } from '@/composables/useAsync'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
 import type { AppNotification } from '@/types/api'
+import { fmtDayMonth } from '@/utils/format'
+
+const { t } = useI18n()
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -30,11 +34,11 @@ const items = computed(() =>
 
 function ago(iso: string) {
   const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000)
-  if (min < 1) return 'сейчас'
-  if (min < 60) return `${min} мин`
-  if (min < 24 * 60) return `${Math.round(min / 60)} ч`
-  if (min < 48 * 60) return 'вчера'
-  return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+  if (min < 1) return t('inbox.now')
+  if (min < 60) return t('ui.minutes', { n: min })
+  if (min < 24 * 60) return t('inbox.hours', { n: Math.round(min / 60) })
+  if (min < 48 * 60) return t('inbox.yesterday')
+  return fmtDayMonth(iso, true)
 }
 
 /** Куда ведёт уведомление (по metadata) */
@@ -62,26 +66,26 @@ async function open(n: AppNotification) {
 }
 
 async function readAll() {
-  await act(() => notificationsApi.readAll(), 'Все прочитаны')
+  await act(() => notificationsApi.readAll(), t('inbox.allRead'))
   store.refresh()
   list.run()
 }
 </script>
 
 <template>
-  <PageHeader title="Входящие">
-    <button class="btn btn--text btn--sm" @click="readAll">Прочитать всё</button>
-    <RouterLink :to="{ path: '/profile', query: { tab: 'notifications' } }" class="btn btn--text btn--sm">Настройки</RouterLink>
+  <PageHeader :title="$t('inbox.title')">
+    <button class="btn btn--text btn--sm" @click="readAll">{{ $t('inbox.readAll') }}</button>
+    <RouterLink :to="{ path: '/profile', query: { tab: 'notifications' } }" class="btn btn--text btn--sm">{{ $t('ui.settings') }}</RouterLink>
   </PageHeader>
 
   <div class="pills" style="margin-bottom: var(--space-lg)">
-    <button class="pill" :class="{ active: filter === 'all' }" @click="filter = 'all'">Все <span class="count">{{ list.data.value?.total ?? 0 }}</span></button>
-    <button class="pill" :class="{ active: filter === 'announce' }" @click="filter = 'announce'">Объявления</button>
-    <button class="pill" :class="{ active: filter === 'deadline' }" @click="filter = 'deadline'">Дедлайны</button>
-    <button class="pill" :class="{ active: filter === 'grade' }" @click="filter = 'grade'">Оценки</button>
+    <button class="pill" :class="{ active: filter === 'all' }" @click="filter = 'all'">{{ $t('ui.all') }} <span class="count">{{ list.data.value?.total ?? 0 }}</span></button>
+    <button class="pill" :class="{ active: filter === 'announce' }" @click="filter = 'announce'">{{ $t('inbox.fAnnounce') }}</button>
+    <button class="pill" :class="{ active: filter === 'deadline' }" @click="filter = 'deadline'">{{ $t('inbox.fDeadline') }}</button>
+    <button class="pill" :class="{ active: filter === 'grade' }" @click="filter = 'grade'">{{ $t('inbox.fGrade') }}</button>
   </div>
 
-  <StateBlock :loading="list.loading.value" :error="list.error.value" :empty="!items.length" empty-text="Здесь пока пусто" @retry="list.run">
+  <StateBlock :loading="list.loading.value" :error="list.error.value" :empty="!items.length" :empty-text="$t('inbox.empty')" @retry="list.run">
     <div class="card card--flush">
       <button v-for="n in items" :key="n.id" class="inbox-row" :class="{ unread: !n.is_read }" @click="open(n)">
         <span class="dot" :class="{ read: n.is_read }" />
@@ -96,7 +100,7 @@ async function readAll() {
   </StateBlock>
 
   <RouterLink v-if="auth.isTeacher" to="/announcements" class="dropzone announce-cta">
-    Учитель / админ: «+ Объявление» — текст и аудитория (школа или курс)
+    {{ $t('inbox.announceCta') }}
   </RouterLink>
 </template>
 

@@ -5,13 +5,13 @@ const emit = defineEmits<{ retry: [] }>()
 
 <template>
   <div v-if="loading" class="state">
-    <span class="spinner" aria-hidden="true" /> Загрузка…
+    <span class="spinner" aria-hidden="true" /> {{ $t('ui.loading') }}
   </div>
   <div v-else-if="error" class="alert alert--error">
     {{ error }}
-    <button class="btn btn--ghost btn--sm" @click="emit('retry')">Повторить</button>
+    <button class="btn btn--ghost btn--sm" @click="emit('retry')">{{ $t('ui.retry') }}</button>
   </div>
-  <div v-else-if="empty" class="state state--empty">{{ emptyText ?? 'Пока ничего нет.' }}</div>
+  <div v-else-if="empty" class="state state--empty">{{ emptyText ?? $t('ui.empty') }}</div>
   <slot v-else />
 </template>
 

@@ -12,9 +12,9 @@ const reports = useAsync(async () => {
 </script>
 
 <template>
-  <PageHeader title="Мой прогресс" />
+  <PageHeader :title="$t('courseView.myProgress')" />
   <StateBlock :loading="reports.loading.value" :error="reports.error.value" :empty="!reports.data.value?.length"
-              empty-text="Вы пока не записаны на курсы." @retry="reports.run">
+              :empty-text="$t('myProgress.empty')" @retry="reports.run">
     <ProgressSummary :reports="reports.data.value ?? []" />
   </StateBlock>
 </template>

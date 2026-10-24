@@ -18,15 +18,15 @@ const list = computed(() => (tab.value === 'active' ? active.value : done.value)
 </script>
 
 <template>
-  <PageHeader title="Мои курсы">
+  <PageHeader :title="$t('nav.myCourses')">
     <div class="pills">
-      <button class="pill" :class="{ active: tab === 'active' }" @click="tab = 'active'">Активные <span class="count">{{ active.length }}</span></button>
-      <button class="pill" :class="{ active: tab === 'done' }" @click="tab = 'done'">Завершённые <span class="count">{{ done.length }}</span></button>
+      <button class="pill" :class="{ active: tab === 'active' }" @click="tab = 'active'">{{ $t('myCourses.active') }} <span class="count">{{ active.length }}</span></button>
+      <button class="pill" :class="{ active: tab === 'done' }" @click="tab = 'done'">{{ $t('myCourses.finished') }} <span class="count">{{ done.length }}</span></button>
     </div>
   </PageHeader>
 
   <StateBlock :loading="progress.loading.value" :error="progress.error.value" :empty="!list.length"
-              :empty-text="tab === 'active' ? 'Активных курсов нет — загляните в каталог.' : 'Завершённых курсов пока нет.'" @retry="progress.run">
+              :empty-text="tab === 'active' ? $t('myCourses.emptyActive') : $t('myCourses.emptyDone')" @retry="progress.run">
     <div class="stack">
       <article v-for="c in list" :key="c.course_id" class="card my-course"
                :class="{ 'card--warning': c.enrollment_status === 'active' && daysLeft(c.access_until) <= 7 }">
@@ -34,19 +34,19 @@ const list = computed(() => (tab.value === 'active' ? active.value : done.value)
           <RouterLink :to="`/courses/${c.course_id}`" class="my-course__title">{{ c.course_title }}</RouterLink>
           <span class="muted small">
             <template v-if="c.enrollment_status === 'active' && daysLeft(c.access_until) <= 7">
-              доступ заканчивается через {{ daysLeft(c.access_until) }} дн.
+              {{ $t('myCourses.expires', { n: daysLeft(c.access_until) }) }}
             </template>
-            <template v-else>средний балл тестов {{ c.average_test_score }}% · доступ до {{ fmtDate(c.access_until) }}</template>
+            <template v-else>{{ $t('myCourses.summary', { avg: c.average_test_score, date: fmtDate(c.access_until) }) }}</template>
           </span>
         </div>
         <div class="my-course__bar"><ProgressBar :value="c.percent_completed" /><span class="small">{{ c.percent_completed }}%</span></div>
         <RouterLink :to="`/courses/${c.course_id}`" class="btn btn--sm" :class="{ 'btn--ghost': c.percent_completed >= 100 }">
-          {{ c.percent_completed >= 100 ? 'Повторить' : 'Продолжить' }}
+          {{ c.percent_completed >= 100 ? $t('myCourses.repeat') : $t('ui.continue') }}
         </RouterLink>
       </article>
     </div>
   </StateBlock>
-  <RouterLink to="/catalog" class="btn btn--ghost" style="margin-top: var(--space-xl)">+ Найти курс в каталоге</RouterLink>
+  <RouterLink to="/catalog" class="btn btn--ghost" style="margin-top: var(--space-xl)">{{ $t('myCourses.find') }}</RouterLink>
 </template>
 
 <style scoped>

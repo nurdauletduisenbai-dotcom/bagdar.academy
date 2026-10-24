@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { commentsApi } from '@/api/content'
 import StateBlock from '@/components/ui/StateBlock.vue'
@@ -9,6 +10,9 @@ import type { Comment } from '@/types/api'
 import { fmtDateTime } from '@/utils/format'
 
 const props = defineProps<{ lessonId: number; canModerate: boolean }>()
+
+const { t } = useI18n()
+
 const auth = useAuthStore()
 const { act, busy } = useAction()
 
@@ -30,7 +34,7 @@ async function send() {
 }
 
 async function remove(c: Comment) {
-  await act(() => commentsApi.remove(c.id), 'Комментарий удалён')
+  await act(() => commentsApi.remove(c.id), t('comments.deleted'))
   comments.run()
 }
 
@@ -42,9 +46,9 @@ async function toggle(c: Comment) {
 
 <template>
   <section class="card">
-    <h2>Вопросы к уроку</h2>
+    <h2>{{ $t('comments.title') }}</h2>
     <StateBlock :loading="comments.loading.value" :error="comments.error.value" :empty="!roots.length"
-                empty-text="Пока нет вопросов — задайте первый." @retry="comments.run">
+                :empty-text="$t('comments.empty')" @retry="comments.run">
       <ul class="list-lines">
         <li v-for="c in roots" :key="c.id" class="stack" style="gap: 6px">
           <div class="row row--between">
@@ -52,12 +56,12 @@ async function toggle(c: Comment) {
             <span class="muted small">{{ fmtDateTime(c.created_at) }}</span>
           </div>
           <p style="margin: 0; white-space: pre-line" :class="{ muted: c.is_hidden }">
-            {{ c.content }} <span v-if="c.is_hidden" class="badge">скрыт</span>
+            {{ c.content }} <span v-if="c.is_hidden" class="badge">{{ $t('comments.hidden') }}</span>
           </p>
           <div class="row small">
-            <button class="btn btn--text btn--sm" @click="replyTo = c">Ответить</button>
-            <button v-if="c.author.id === auth.user?.id || canModerate" class="btn btn--text btn--sm" @click="remove(c)">Удалить</button>
-            <button v-if="canModerate" class="btn btn--text btn--sm" @click="toggle(c)">{{ c.is_hidden ? 'Показать' : 'Скрыть' }}</button>
+            <button class="btn btn--text btn--sm" @click="replyTo = c">{{ $t('comments.reply') }}</button>
+            <button v-if="c.author.id === auth.user?.id || canModerate" class="btn btn--text btn--sm" @click="remove(c)">{{ $t('ui.delete') }}</button>
+            <button v-if="canModerate" class="btn btn--text btn--sm" @click="toggle(c)">{{ c.is_hidden ? $t('comments.show') : $t('comments.hide') }}</button>
           </div>
           <ul v-if="repliesOf(c.id).length" class="replies">
             <li v-for="r in repliesOf(c.id)" :key="r.id">
@@ -66,7 +70,7 @@ async function toggle(c: Comment) {
                 <span class="muted small">{{ fmtDateTime(r.created_at) }}</span>
               </div>
               <p style="margin: 4px 0 0; white-space: pre-line">{{ r.content }}</p>
-              <button v-if="r.author.id === auth.user?.id || canModerate" class="btn btn--text btn--sm" @click="remove(r)">Удалить</button>
+              <button v-if="r.author.id === auth.user?.id || canModerate" class="btn btn--text btn--sm" @click="remove(r)">{{ $t('ui.delete') }}</button>
             </li>
           </ul>
         </li>
@@ -75,11 +79,11 @@ async function toggle(c: Comment) {
 
     <form class="form" style="margin-top: 16px" @submit.prevent="send">
       <p v-if="replyTo" class="small">
-        Ответ для <strong>{{ replyTo.author.name }}</strong>
-        <button type="button" class="btn btn--ghost btn--sm" @click="replyTo = null">отмена</button>
+        <i18n-t keypath="comments.replyFor" scope="global"><template #name><strong>{{ replyTo.author.name }}</strong></template></i18n-t>
+        <button type="button" class="btn btn--ghost btn--sm" @click="replyTo = null">{{ $t('comments.cancel') }}</button>
       </p>
-      <textarea v-model="text" placeholder="Ваш вопрос или комментарий" required />
-      <button class="btn" :disabled="busy" style="justify-self: start">Отправить</button>
+      <textarea v-model="text" :placeholder="$t('comments.placeholder')" required />
+      <button class="btn" :disabled="busy" style="justify-self: start">{{ $t('comments.send') }}</button>
     </form>
   </section>
 </template>

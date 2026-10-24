@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { coursesApi } from '@/api/courses'
 import { paymentsApi } from '@/api/payments'
@@ -15,6 +16,9 @@ import type { Order } from '@/types/api'
 import { courseTypeLabels, fmtDuration, fmtMoney, testModeLabels } from '@/utils/format'
 
 const props = defineProps<{ id: string }>()
+
+const { t } = useI18n()
+
 const auth = useAuthStore()
 const toast = useToast()
 const { act, busy } = useAction()
@@ -34,7 +38,8 @@ const canBuy = computed(() => !course.data.value?.is_enrolled && auth.hasRole('s
 const lessonsCount = computed(() => course.data.value?.sections.reduce((n, s) => n + s.lessons.length, 0) ?? 0)
 const hasPreview = computed(() => course.data.value?.sections.some((s) => s.lessons.some((l) => l.is_free_preview)))
 const nextLesson = computed(() => report.data.value?.lessons.find((l) => !l.is_completed) ?? null)
-const providerLabel: Record<string, string> = { manual: 'Наличные / перевод', stripe: 'Карта (Stripe)', kaspi: 'Kaspi Pay' }
+const providerLabel = (name: string) =>
+  ({ manual: t('courseView.provider.manual'), stripe: t('courseView.provider.stripe'), kaspi: 'Kaspi Pay' } as Record<string, string>)[name] ?? name
 
 /** Прогресс по разделу из отчёта (уроки отчёта несут название раздела) */
 function sectionProgress(title: string) {
@@ -47,12 +52,12 @@ async function enroll() {
   const order = await act(() => paymentsApi.create(Number(props.id), isFree.value ? 'manual' : provider.value))
   if (!order) return
   if (order.status === 'paid') {
-    toast.success('Вы записаны на курс')
+    toast.success(t('courseView.enrolled'))
     course.run()
   } else if (order.checkout_url) {
     window.location.href = order.checkout_url
   } else {
-    toast.info('Заказ создан и ждёт подтверждения оплаты администратором. Статус — в «Мои заказы».')
+    toast.info(t('courseView.orderPending'))
   }
 }
 </script>
@@ -64,25 +69,25 @@ async function enroll() {
       <template v-if="course.data.value.is_enrolled">
         <div class="row row--between head">
           <div>
-            <RouterLink to="/my-courses" class="back small muted"><AppIcon name="arrow-left" :size="14" /> Мои курсы</RouterLink>
+            <RouterLink to="/my-courses" class="back small muted"><AppIcon name="arrow-left" :size="14" /> {{ $t('nav.myCourses') }}</RouterLink>
             <h1>{{ course.data.value.title }}</h1>
           </div>
           <div class="row">
-            <RouterLink v-if="auth.isStaff" :to="`/teach/courses/${id}`" class="btn btn--ghost">Редактировать</RouterLink>
-            <RouterLink :to="`/progress/courses/${id}`" class="btn btn--ghost">Мой прогресс</RouterLink>
+            <RouterLink v-if="auth.isStaff" :to="`/teach/courses/${id}`" class="btn btn--ghost">{{ $t('ui.edit') }}</RouterLink>
+            <RouterLink :to="`/progress/courses/${id}`" class="btn btn--ghost">{{ $t('courseView.myProgress') }}</RouterLink>
           </div>
         </div>
 
         <section v-if="auth.isStudent" class="card next">
           <ProgressRing :value="report.data.value?.percent_completed ?? 0" :size="96" />
           <div class="next__body">
-            <div class="eyebrow">Далее</div>
-            <h2 class="next__title">{{ nextLesson?.title ?? 'Все уроки пройдены' }}</h2>
-            <RouterLink v-if="nextLesson" :to="`/lessons/${nextLesson.id}`" class="btn">Продолжить</RouterLink>
+            <div class="eyebrow">{{ $t('courseView.next') }}</div>
+            <h2 class="next__title">{{ nextLesson?.title ?? $t('courseView.allDone') }}</h2>
+            <RouterLink v-if="nextLesson" :to="`/lessons/${nextLesson.id}`" class="btn">{{ $t('ui.continue') }}</RouterLink>
           </div>
           <div v-if="report.data.value" class="pills next__chips">
-            <span class="pill">Тесты {{ report.data.value.tests.filter((t) => t.passed).length }}/{{ report.data.value.tests.length }}</span>
-            <span class="pill">ДЗ {{ report.data.value.assignments.filter((a) => a.status === 'graded' || a.status === 'submitted').length }}/{{ report.data.value.assignments.length }}</span>
+            <span class="pill">{{ $t('courseView.testsPill') }} {{ report.data.value.tests.filter((t) => t.passed).length }}/{{ report.data.value.tests.length }}</span>
+            <span class="pill">{{ $t('courseView.hwPill') }} {{ report.data.value.assignments.filter((a) => a.status === 'graded' || a.status === 'submitted').length }}/{{ report.data.value.assignments.length }}</span>
           </div>
         </section>
       </template>
@@ -90,39 +95,39 @@ async function enroll() {
       <!-- ====== Лендинг (вайрфрейм 1j) ====== -->
       <section v-else class="band page-band landing">
         <div class="landing__info">
-          <RouterLink to="/catalog" class="back small muted"><AppIcon name="arrow-left" :size="14" /> Каталог</RouterLink>
+          <RouterLink to="/catalog" class="back small muted"><AppIcon name="arrow-left" :size="14" /> {{ $t('titles.catalog') }}</RouterLink>
           <div class="eyebrow">
-            {{ course.data.value.subject || courseTypeLabels[course.data.value.type] }}<template v-if="course.data.value.grade_level"> · {{ course.data.value.grade_level }} класс</template>
+            {{ course.data.value.subject || courseTypeLabels[course.data.value.type] }}<template v-if="course.data.value.grade_level"> · {{ $t('courseView.grade', { n: course.data.value.grade_level }) }}</template>
           </div>
           <h1 class="landing__title">{{ course.data.value.title }}</h1>
-          <p class="muted">{{ lessonsCount }} уроков · {{ course.data.value.tests.length }} тестов · доступ {{ course.data.value.access_days }} дней</p>
+          <p class="muted">{{ $t('courseView.meta', { lessons: lessonsCount, tests: course.data.value.tests.length, days: course.data.value.access_days }) }}</p>
           <p v-if="course.data.value.description" class="landing__desc">{{ course.data.value.description }}</p>
-          <RouterLink v-if="auth.isStaff" :to="`/teach/courses/${id}`" class="btn btn--ghost btn--sm" style="justify-self: start">Редактировать</RouterLink>
+          <RouterLink v-if="auth.isStaff" :to="`/teach/courses/${id}`" class="btn btn--ghost btn--sm" style="justify-self: start">{{ $t('ui.edit') }}</RouterLink>
         </div>
         <aside class="card price">
           <span class="stat">{{ fmtMoney(course.data.value.price) }}</span>
           <template v-if="canBuy">
-            <select v-if="!isFree" v-model="provider" aria-label="Способ оплаты">
+            <select v-if="!isFree" v-model="provider" :aria-label="$t('courseView.paymentMethod')">
               <option v-for="p in providers.data.value ?? []" :key="p.name" :value="p.name" :disabled="!p.is_configured">
-                {{ providerLabel[p.name] ?? p.name }}{{ p.is_configured ? '' : ' — не настроено' }}
+                {{ providerLabel(p.name) }}{{ p.is_configured ? '' : ` — ${$t('courseView.notConfigured')}` }}
               </option>
             </select>
-            <button class="btn btn--block" :disabled="busy" @click="enroll">{{ isFree ? 'Записаться бесплатно' : 'Купить курс' }}</button>
+            <button class="btn btn--block" :disabled="busy" @click="enroll">{{ isFree ? $t('courseView.enrollFree') : $t('courseView.buy') }}</button>
           </template>
-          <p v-else class="muted small">Записаться может ученик или родитель.</p>
-          <p v-if="hasPreview" class="muted small center">первый урок бесплатно</p>
+          <p v-else class="muted small">{{ $t('courseView.whoCanBuy') }}</p>
+          <p v-if="hasPreview" class="muted small center">{{ $t('courseView.firstFree') }}</p>
         </aside>
       </section>
 
       <div class="layout">
         <section class="stack">
-          <h2>Программа</h2>
+          <h2>{{ $t('courseView.program') }}</h2>
           <article v-for="(section, i) in course.data.value.sections" :key="section.id" class="card section">
             <button class="section__head" @click="openSections[i] = !openSections[i]">
               <span class="row">
                 <AppIcon :name="openSections[i] ? 'chevron-down' : 'chevron-right'" :size="16" />
                 <strong>{{ section.title }}</strong>
-                <span class="muted small">· {{ section.lessons.length }} уроков</span>
+                <span class="muted small">· {{ $t('courseView.lessonsN', { n: section.lessons.length }) }}</span>
               </span>
               <span v-if="report.data.value" class="section__bar"><ProgressBar :value="sectionProgress(section.title)" /></span>
             </button>
@@ -133,23 +138,23 @@ async function enroll() {
                 <RouterLink v-if="course.data.value.is_enrolled || lesson.is_free_preview || auth.isStaff" :to="`/lessons/${lesson.id}`">{{ lesson.title }}</RouterLink>
                 <span v-else class="muted">{{ lesson.title }}</span>
                 <span class="row small muted">
-                  <span v-if="lesson.is_free_preview" class="badge badge--success">Бесплатно</span>
-                  <span v-if="!lesson.is_published" class="badge badge--warning">Не опубликован</span>
+                  <span v-if="lesson.is_free_preview" class="badge badge--success">{{ $t('ui.free') }}</span>
+                  <span v-if="!lesson.is_published" class="badge badge--warning">{{ $t('courseView.notPublished') }}</span>
                   <span v-for="v in lesson.videos" :key="v.id">{{ fmtDuration(v.duration_seconds) }}</span>
                 </span>
               </li>
             </ul>
           </article>
-          <p v-if="!course.data.value.sections.length" class="muted">Программа курса пока пустая.</p>
+          <p v-if="!course.data.value.sections.length" class="muted">{{ $t('courseView.emptyProgram') }}</p>
         </section>
 
         <aside v-if="course.data.value.tests.length" class="card tests">
-          <h2>Тесты</h2>
+          <h2>{{ $t('courseView.tests') }}</h2>
           <ul class="list-lines">
             <li v-for="t in course.data.value.tests" :key="t.id" class="stack" style="gap: 2px">
               <RouterLink :to="`/tests/${t.id}/take`">{{ t.title }}</RouterLink>
               <span class="small muted">
-                {{ testModeLabels[t.mode] }} · {{ t.time_limit_minutes ? `${t.time_limit_minutes} мин` : 'без таймера' }} · попыток {{ t.max_attempts || '∞' }}
+                {{ testModeLabels[t.mode] }} · {{ t.time_limit_minutes ? $t('ui.minutes', { n: t.time_limit_minutes }) : $t('ui.noTimer') }} · {{ $t('courseView.attempts', { n: t.max_attempts || '∞' }) }}
               </span>
             </li>
           </ul>
