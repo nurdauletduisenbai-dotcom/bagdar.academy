@@ -136,8 +136,11 @@ def approve(app: SchoolApplication, by) -> dict:
         from apps.accounts.services import hash_token
 
         raw = secrets.token_urlsafe(32)
+        # Персональное: по ссылке из письма логин — email заявителя (не меняется), ФИО подставлено
+        first, _, last = app.contact_name.partition(' ')
         Invite.objects.create(org=org, role='admin', max_uses=1, token_hash=hash_token(raw), created_by=by,
-                              expires_at=timezone.now() + timedelta(days=INVITE_DAYS))
+                              expires_at=timezone.now() + timedelta(days=INVITE_DAYS),
+                              email=app.email, first_name=first[:100], last_name=last.strip()[:100])
         body = texts['approved_invite'].format(**ctx, link=f'{settings.FRONTEND_URL}/invite?token={raw}')
 
     app.status = SchoolApplication.Status.APPROVED

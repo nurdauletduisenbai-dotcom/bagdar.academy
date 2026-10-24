@@ -14,6 +14,7 @@ from .models import ParentStudentRelation, RefreshToken
 from .serializers import (
     ChangePasswordSerializer,
     EmailSerializer,
+    InvitePreviewSerializer,
     LoginResponseSerializer,
     LoginSerializer,
     LogoutSerializer,
@@ -116,6 +117,17 @@ class RegisterByInviteView(AuthThrottledView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+@extend_schema(tags=['auth'])
+class InvitePreviewView(AuthThrottledView):
+    """Что показать по ссылке из письма: кому и куда приглашение, или почему оно уже не действует."""
+
+    @extend_schema(summary='Проверить приглашение по токену (без регистрации)',
+                   parameters=[OpenApiParameter('token', str, required=True)], responses=InvitePreviewSerializer)
+    def get(self, request):
+        data = AuthService.preview_invite(request.query_params.get('token', ''))
+        return Response(InvitePreviewSerializer(data).data)
 
 
 @extend_schema(tags=['auth'])
