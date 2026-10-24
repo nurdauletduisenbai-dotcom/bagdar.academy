@@ -33,6 +33,7 @@ rsync -a --delete dist/ "$WEB_ROOT/frontend/"
 step "Миграции и статика"
 cd "$REPO_DIR/edu_platform/backend"
 "$VENV/bin/python" manage.py migrate --noinput
+"$VENV/bin/python" manage.py import_schools --if-empty
 "$VENV/bin/python" manage.py collectstatic --noinput -v 0
 "$VENV/bin/python" manage.py check --deploy --fail-level ERROR
 

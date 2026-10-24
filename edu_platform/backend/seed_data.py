@@ -312,6 +312,7 @@ def run_seed():
     seed_role_demo(org, admin_user, teacher_user, student1, student2, parent_user, c1, c2, c3, group1,
                    lesson1, lesson2, topic)
     seed_news()
+    seed_schools(org)
     print("\n🎉 Все демонстрационные данные успешно загружены!")
     print_demo_accounts()
 
@@ -472,6 +473,19 @@ def seed_news():
         Post.objects.get_or_create(title=item['title'], defaults={
             **item, 'is_published': True, 'published_at': now - timedelta(days=days_ago)})
     print(f"✓ Новости для главной страницы: {len(posts)} публикаций.")
+
+
+def seed_schools(org):
+    """Справочник школ (снимок OpenStreetMap) + демо-школа, подключённая к платформе."""
+    from django.core.management import call_command
+
+    from apps.schools.models import Region, School
+
+    call_command('import_schools')
+    School.objects.update_or_create(name=org.name, region=Region.objects.get(code='KZ-75'), defaults={
+        'locality': 'Алматы', 'kind': School.Kind.LYCEUM, 'organization': org,
+        'is_approved': True, 'source': School.Source.ADMIN})
+    print("✓ Справочник школ загружен; демо-школа связана с организацией.")
 
 
 if __name__ == '__main__':

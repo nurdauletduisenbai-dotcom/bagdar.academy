@@ -6,11 +6,12 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { authApi, parentsApi } from '@/api/auth'
 import { notificationsApi } from '@/api/notifications'
+import SchoolPicker from '@/components/schools/SchoolPicker.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import StateBlock from '@/components/ui/StateBlock.vue'
 import { useAction, useAsync } from '@/composables/useAsync'
 import { useAuthStore } from '@/stores/auth'
-import type { TwoFactorSetup } from '@/types/api'
+import type { DirectorySchool, NewSchoolPayload, TwoFactorSetup } from '@/types/api'
 import { fmtDateTime } from '@/utils/format'
 
 const { t } = useI18n()
@@ -28,6 +29,19 @@ onMounted(async () => {
   const p = await profile.run()
   if (p) Object.assign(form, { first_name: p.first_name, last_name: p.last_name, phone: p.phone ?? '', language: p.language, birth_date: p.birth_date ?? '' })
 })
+
+// ---------- Школа ----------
+const pickedSchool = ref<DirectorySchool | null>(null)
+const ownSchool = ref<NewSchoolPayload | null>(null)
+async function saveSchool() {
+  const p = await act(() => authApi.setSchool({ school_id: pickedSchool.value?.id ?? null, new_school: ownSchool.value }),
+    t('schoolPicker.saved'))
+  if (p) {
+    profile.data.value = p
+    pickedSchool.value = null
+    ownSchool.value = null
+  }
+}
 
 async function saveProfile() {
   await act(() => authApi.updateMe({ ...form, phone: form.phone || null, birth_date: form.birth_date || null }), t('profile.saved'))
@@ -152,6 +166,20 @@ async function resend() {
             </div>
           </form>
         </StateBlock>
+      </section>
+
+      <section v-if="tab === 'profile' && profile.data.value" class="card stack">
+        <h2>{{ $t('schoolPicker.label') }}</h2>
+        <p v-if="profile.data.value.school" class="row">
+          <strong>{{ profile.data.value.school.name }}</strong>
+          <span v-if="profile.data.value.school.locality" class="muted small">{{ profile.data.value.school.locality }}</span>
+          <span v-if="!profile.data.value.school.is_approved" class="badge badge--warning">{{ $t('schoolPicker.pending') }}</span>
+        </p>
+        <p v-else class="muted small">{{ $t('schoolPicker.none') }}</p>
+        <SchoolPicker v-model:school="pickedSchool" v-model:new-school="ownSchool" />
+        <div class="row">
+          <button class="btn" :disabled="busy || (!pickedSchool && !ownSchool)" @click="saveSchool">{{ $t('common.save') }}</button>
+        </div>
       </section>
 
       <template v-if="tab === 'security'">

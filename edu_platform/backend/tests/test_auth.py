@@ -5,6 +5,7 @@ from rest_framework.test import APIClient
 
 from apps.accounts.models import RefreshToken
 from apps.organizations.models import Organization, OrgMembership
+from apps.schools.models import Region
 
 User = get_user_model()
 
@@ -35,6 +36,7 @@ class TestAuthenticationFlows:
             'last_name': 'Учеников',
             'role': 'student',
             'org_slug': 'test-school',
+            'new_school': {'name': 'Школа-лицей № 1', 'region': Region.objects.get(code='KZ-75').id},
         })
         assert res_ok.status_code == status.HTTP_201_CREATED
         user = User.objects.get(email='student@test.com')

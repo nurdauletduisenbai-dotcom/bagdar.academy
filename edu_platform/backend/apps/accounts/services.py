@@ -108,7 +108,10 @@ class AuthService:
     @classmethod
     @transaction.atomic
     def register(cls, email: str, password: str, first_name: str, last_name: str, role: str = 'student',
-                 org_slug: str | None = None, is_minor: bool = False, parent_consent: bool = False) -> User:
+                 org_slug: str | None = None, is_minor: bool = False, parent_consent: bool = False,
+                 school=None, new_school: dict | None = None) -> User:
+        from apps.schools.models import School
+
         if role not in ('student', 'parent'):
             raise ValidationError("Публичная регистрация доступна только для ролей 'student' или 'parent'.")
         if is_minor and not parent_consent:
@@ -118,7 +121,10 @@ class AuthService:
         if User.all_objects.filter(email=email).exists():
             raise ValidationError({'email': 'Пользователь с таким email уже существует.'})
 
-        org = Organization.objects.filter(slug=org_slug or settings.DEFAULT_ORG_SLUG, is_active=True).first()
+        # Школа подключена к платформе — ученик сразу попадает в её организацию, иначе — в организацию по умолчанию
+        school_org = school.organization if school and school.organization_id and school.organization.is_active else None
+        org = school_org or Organization.objects.filter(
+            slug=org_slug or settings.DEFAULT_ORG_SLUG, is_active=True).first()
         if not org:
             raise ValidationError({'org_slug': 'Организация не найдена.'})
 
@@ -131,6 +137,13 @@ class AuthService:
             parent_consent=parent_consent,
             is_verified=False,
         )
+        if new_school:
+            # Своя школа/кружок: видна только этому ученику, пока администратор не одобрит в Django admin
+            school = School.objects.create(**new_school, is_approved=False, source=School.Source.USER,
+                                           created_by=user)
+        if school:
+            user.school = school
+            user.save(update_fields=['school', 'updated_at'])
         OrgMembership.objects.create(org=org, user=user, role=role)
         transaction.on_commit(lambda: cls.send_verification_email(user))
         return user

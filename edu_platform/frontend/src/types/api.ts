@@ -70,6 +70,8 @@ export interface UserProfile {
   avatar_url: string | null
   is_verified: boolean
   is_minor: boolean
+  /** Школа из справочника; is_approved=false — добавлена учеником и ждёт проверки */
+  school: { id: ID; name: string; name_kk: string; name_ru: string; locality: string; is_approved: boolean } | null
   roles: Role[]
   created_at: string
 }
@@ -631,4 +633,37 @@ export interface PlatformStats {
   students: number
   teachers: number
   schools: number
+}
+
+// ---------- Справочник школ Казахстана (публично, для регистрации) ----------
+export type SchoolKind = 'school' | 'gymnasium' | 'lyceum' | 'specialized' | 'college' | 'center' | 'extra' | 'club' | 'other'
+
+export interface KzRegion {
+  id: ID
+  code: string
+  name_ru: string
+  name_kk: string
+  is_city: boolean
+}
+
+export interface DirectorySchool {
+  id: ID
+  name: string
+  name_kk: string
+  name_ru: string
+  kind: SchoolKind
+  region: ID
+  region_name_ru: string
+  region_name_kk: string
+  locality: string
+  /** Школа уже работает на платформе — ученик попадёт в её организацию */
+  on_platform: boolean
+}
+
+/** «Моей школы нет в списке»: своя школа, кружок или учебный центр (уходит на проверку) */
+export interface NewSchoolPayload {
+  name: string
+  kind: SchoolKind
+  region: ID
+  locality: string
 }

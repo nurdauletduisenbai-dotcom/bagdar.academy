@@ -2,6 +2,7 @@ import type {
   AuthSession,
   LoginResponse,
   Message,
+  NewSchoolPayload,
   ParentRelation,
   TwoFactorSetup,
   UserProfile,
@@ -22,6 +23,8 @@ export interface RegisterPayload {
   last_name: string
   role?: 'student' | 'parent'
   org_slug?: string
+  school_id?: number | null
+  new_school?: NewSchoolPayload | null
   is_minor?: boolean
   parent_consent?: boolean
 }
@@ -37,6 +40,9 @@ export const authApi = {
   logoutAll: () => http.post('/auth/logout-all/', {}),
   me: () => data(http.get<UserProfile>('/auth/users/me/')),
   updateMe: (payload: Partial<UserProfile>) => data(http.patch<UserProfile>('/auth/users/me/', payload)),
+  /** Сменить свою школу: из справочника (school_id) или свою (new_school, уходит на проверку) */
+  setSchool: (payload: { school_id?: number | null; new_school?: NewSchoolPayload | null }) =>
+    data(http.put<UserProfile>('/auth/users/me/school/', payload)),
   changePassword: (old_password: string, new_password: string) =>
     data(http.post<Message>('/auth/change-password/', { old_password, new_password })),
   verifyEmail: (token: string) => data(http.get<Message>('/auth/verify-email/', { params: { token } })),

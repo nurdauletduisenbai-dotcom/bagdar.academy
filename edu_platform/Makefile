@@ -1,4 +1,4 @@
-.PHONY: env up down restart logs ps shell migrations migrate seed test lint typecheck front-build
+.PHONY: env up down restart logs ps shell migrations migrate seed schools test lint typecheck front-build
 
 DC = docker compose
 BACKEND = $(DC) exec backend
@@ -34,6 +34,9 @@ migrate:
 
 seed:
 	$(BACKEND) python seed_data.py
+
+schools:        ## справочник школ: встроенный снимок OSM (или: make schools ARGS=--osm / ARGS=путь.csv)
+	$(BACKEND) python manage.py import_schools $(ARGS)
 
 test:
 	$(BACKEND) pytest -v

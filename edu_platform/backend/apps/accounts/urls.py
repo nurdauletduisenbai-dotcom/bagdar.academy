@@ -6,6 +6,7 @@ from .views import (
     LoginView,
     LogoutAllView,
     LogoutView,
+    MySchoolView,
     PasswordResetConfirmView,
     PasswordResetRequestView,
     RefreshTokenView,
@@ -38,4 +39,5 @@ urlpatterns = [
     path('2fa/enable/', TwoFactorEnableView.as_view(), name='auth_2fa_enable'),
     path('2fa/disable/', TwoFactorDisableView.as_view(), name='auth_2fa_disable'),
     path('users/me/', UserProfileView.as_view(), name='user_me'),
+    path('users/me/school/', MySchoolView.as_view(), name='user_me_school'),
 ]

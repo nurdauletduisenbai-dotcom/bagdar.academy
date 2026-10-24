@@ -17,6 +17,7 @@ from .serializers import (
     LoginResponseSerializer,
     LoginSerializer,
     LogoutSerializer,
+    MySchoolSerializer,
     ParentLinkRequestSerializer,
     ParentRelationSerializer,
     PasswordResetConfirmSerializer,
@@ -220,6 +221,37 @@ class UserProfileView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+@extend_schema(tags=['auth'])
+class MySchoolView(APIView):
+    """Смена своей школы из профиля: из справочника или своя (уходит на проверку)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(summary='Сменить свою школу', request=MySchoolSerializer, responses=UserProfileSerializer)
+    def put(self, request):
+        from apps.schools.models import School
+
+        serializer = MySchoolSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        school = serializer.validated_data.get('school')
+        new_school = serializer.validated_data.get('new_school')
+        if new_school:
+            own = user.school
+            reusable = (own and own.source == School.Source.USER and not own.is_approved
+                        and own.created_by_id == user.id and not own.students.exclude(id=user.id).exists())
+            if reusable:  # правим свою же заявку, а не плодим новые
+                for field, value in new_school.items():
+                    setattr(own, field, value)
+                own.save()
+                school = own
+            else:
+                school = School.objects.create(**new_school, is_approved=False, source=School.Source.USER,
+                                               created_by=user)
+        user.school = school
+        user.save(update_fields=['school', 'updated_at'])
+        return Response(UserProfileSerializer(user, context={'request': request}).data)
 
 
 @extend_schema(tags=['auth'])

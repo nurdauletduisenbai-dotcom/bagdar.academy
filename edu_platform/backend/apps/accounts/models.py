@@ -37,6 +37,8 @@ class User(AbstractBaseUser, PermissionsMixin, SoftDeletableModel):
     language = models.CharField('Язык интерфейса', max_length=5, choices=Language.choices, default=Language.RU)
     birth_date = models.DateField('Дата рождения', null=True, blank=True)
     avatar_url = models.URLField('Аватар', blank=True, null=True)
+    school = models.ForeignKey('schools.School', on_delete=models.SET_NULL, null=True, blank=True,
+                               related_name='students', verbose_name='Школа (из справочника)')
 
     is_verified = models.BooleanField('Email подтвержден', default=False)
     is_minor = models.BooleanField('Младше 14 лет', default=False)

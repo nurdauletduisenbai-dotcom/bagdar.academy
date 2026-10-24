@@ -67,6 +67,7 @@ class TestJwtAndSessions:
     def test_register_unknown_org_is_400(self, api):
         res = api.post('/api/v1/auth/register/', {
             'email': 'x@a.kz', 'password': PASSWORD, 'first_name': 'А', 'last_name': 'Б', 'org_slug': 'nope',
+            'role': 'parent',
         })
         assert res.status_code == 400
 
@@ -79,6 +80,7 @@ class TestJwtAndSessions:
         with django_capture_on_commit_callbacks(execute=True):
             res = api.post('/api/v1/auth/register/', {
                 'email': 'new@a.kz', 'password': PASSWORD, 'first_name': 'А', 'last_name': 'Б', 'org_slug': org.slug,
+                'role': 'parent',
             })
         assert res.status_code == 201
         assert len(mail.outbox) == 1

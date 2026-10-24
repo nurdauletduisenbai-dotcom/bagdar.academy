@@ -10,9 +10,10 @@ class UserAdmin(BaseUserAdmin):
     list_display = ('email', 'first_name', 'last_name', 'is_verified', 'is_active', 'is_staff', 'created_at')
     list_filter = ('is_verified', 'is_active', 'is_staff', 'language')
     search_fields = ('email', 'first_name', 'last_name', 'phone')
+    autocomplete_fields = ('school',)
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Профиль', {'fields': ('first_name', 'last_name', 'phone', 'language', 'birth_date', 'avatar_url')}),
+        ('Профиль', {'fields': ('first_name', 'last_name', 'phone', 'language', 'birth_date', 'avatar_url', 'school')}),
         ('Статус', {'fields': ('is_verified', 'is_minor', 'parent_consent', 'is_active', 'deleted_at')}),
         ('Права', {'fields': ('is_staff', 'is_superuser', 'groups', 'user_permissions')}),
     )

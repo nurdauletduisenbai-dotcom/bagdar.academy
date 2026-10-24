@@ -1,6 +1,9 @@
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
+from apps.schools.models import School
+from apps.schools.serializers import NewSchoolSerializer
+
 from .models import ParentStudentRelation, RefreshToken, User
 from .services import hash_token
 
@@ -13,8 +16,20 @@ class RegisterSerializer(serializers.Serializer):
     last_name = serializers.CharField(max_length=100)
     role = serializers.ChoiceField(choices=['student', 'parent'], default='student')
     org_slug = serializers.CharField(required=False, help_text='Slug организации; по умолчанию DEFAULT_ORG_SLUG')
+    school_id = serializers.PrimaryKeyRelatedField(
+        source='school', queryset=School.objects.visible(), required=False, allow_null=True,
+        help_text='Школа из справочника (GET /api/v1/schools/). Если она подключена к платформе — вход в её организацию.')
+    new_school = NewSchoolSerializer(required=False, allow_null=True,
+                                     help_text='Школы нет в списке — добавить свою (уйдёт на проверку)')
     is_minor = serializers.BooleanField(default=False)
     parent_consent = serializers.BooleanField(default=False)
+
+    def validate(self, attrs):
+        if attrs.get('school') and attrs.get('new_school'):
+            raise serializers.ValidationError({'school_id': 'Выберите школу из списка или добавьте свою — что-то одно.'})
+        if attrs.get('role', 'student') == 'student' and not (attrs.get('school') or attrs.get('new_school')):
+            raise serializers.ValidationError({'school_id': 'Выберите школу из списка или укажите свою.'})
+        return attrs
 
 
 class RegisterByInviteSerializer(serializers.Serializer):
@@ -94,8 +109,26 @@ class TwoFactorBackupCodesSerializer(serializers.Serializer):
     backup_codes = serializers.ListField(child=serializers.CharField())
 
 
+class MySchoolSerializer(serializers.Serializer):
+    school_id = serializers.PrimaryKeyRelatedField(source='school', queryset=School.objects.visible(),
+                                                   required=False, allow_null=True)
+    new_school = NewSchoolSerializer(required=False, allow_null=True)
+
+    def validate(self, attrs):
+        if attrs.get('school') and attrs.get('new_school'):
+            raise serializers.ValidationError({'school_id': 'Выберите школу из списка или добавьте свою — что-то одно.'})
+        return attrs
+
+
+class UserSchoolSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = School
+        fields = ('id', 'name', 'name_kk', 'name_ru', 'locality', 'is_approved')
+
+
 class UserProfileSerializer(serializers.ModelSerializer):
     roles = serializers.SerializerMethodField()
+    school = UserSchoolSerializer(read_only=True)
 
     class Meta:
         model = User
@@ -110,10 +143,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'avatar_url',
             'is_verified',
             'is_minor',
+            'school',
             'roles',
             'created_at',
         )
-        read_only_fields = ('id', 'email', 'is_verified', 'is_minor', 'created_at', 'roles')
+        read_only_fields = ('id', 'email', 'is_verified', 'is_minor', 'school', 'created_at', 'roles')
 
     def get_roles(self, obj) -> list[str]:
         request = self.context.get('request')

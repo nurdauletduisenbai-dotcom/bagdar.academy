@@ -1,27 +1,40 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 
 import { authApi } from '@/api/auth'
 import { errorMessage } from '@/api/http'
+import SchoolPicker from '@/components/schools/SchoolPicker.vue'
+import type { DirectorySchool, NewSchoolPayload } from '@/types/api'
 
 import AuthCard from './AuthCard.vue'
 
+const { t } = useI18n()
 // ?role=parent — с выбора роли на главной странице
 const presetRole = useRoute().query.role === 'parent' ? 'parent' : 'student'
 const form = reactive({
   email: '', password: '', first_name: '', last_name: '',
-  role: presetRole as 'student' | 'parent', org_slug: 'fizmat-school', is_minor: false, parent_consent: false,
+  role: presetRole as 'student' | 'parent', is_minor: false, parent_consent: false,
 })
+// Школа: из справочника или своя (кружок, учебный центр); ученику обязательна, родителю — нет
+const school = ref<DirectorySchool | null>(null)
+const newSchool = ref<NewSchoolPayload | null>(null)
+const schoolMissing = ref(false)
 const error = ref('')
 const done = ref('')
 const loading = ref(false)
 
 async function onSubmit() {
   error.value = ''
+  schoolMissing.value = form.role === 'student' && !school.value && !newSchool.value
+  if (schoolMissing.value) {
+    error.value = t('register.schoolRequired')
+    return
+  }
   loading.value = true
   try {
-    done.value = (await authApi.register(form)).message
+    done.value = (await authApi.register({ ...form, school_id: school.value?.id ?? null, new_school: newSchool.value })).message
   } catch (e) {
     error.value = errorMessage(e)
   } finally {
@@ -51,7 +64,8 @@ async function onSubmit() {
           <option value="parent">{{ $t("roles.parent") }}</option>
         </select>
       </label>
-      <label>{{ $t('register.orgSlug') }} <input v-model="form.org_slug" required /></label>
+      <SchoolPicker v-model:school="school" v-model:new-school="newSchool" :required="form.role === 'student'"
+                    :invalid="schoolMissing" />
       <label class="inline"><input v-model="form.is_minor" type="checkbox" /> {{ $t('register.minor') }}</label>
       <label v-if="form.is_minor" class="inline"><input v-model="form.parent_consent" type="checkbox" /> {{ $t('register.consent') }}</label>
       <p v-if="error" class="alert alert--error">{{ error }}</p>
