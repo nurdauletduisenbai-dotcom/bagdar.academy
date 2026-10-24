@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { orgsApi } from '@/api/orgs'
@@ -10,7 +10,7 @@ import PageHeader from '@/components/ui/PageHeader.vue'
 import StateBlock from '@/components/ui/StateBlock.vue'
 import { useAction, useAsync } from '@/composables/useAsync'
 import { useAuthStore } from '@/stores/auth'
-import type { Member, Role } from '@/types/api'
+import type { Member, MemberLookup, Role } from '@/types/api'
 import { fmtDate, roleLabel, roleOptions } from '@/utils/format'
 
 const { t } = useI18n()
@@ -19,8 +19,50 @@ const auth = useAuthStore()
 const { act, busy } = useAction()
 const filters = reactive({ role: '' as Role | '', search: '', page: 1 })
 const members = useAsync(() => orgsApi.members({ role: filters.role || undefined, search: filters.search || undefined, page: filters.page }))
-const add = reactive({ email: '', role: 'student' as Role })
+const add = reactive({ role: 'student' as Role })
 const addOpen = ref(false)
+
+// ---------- Поиск пользователя для добавления: видно сразу, есть ли он и кто это ----------
+const query = ref('')
+const found = ref<MemberLookup[]>([])
+const picked = ref<MemberLookup | null>(null)
+const searching = ref(false)
+const looksLikeEmail = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(query.value.trim()))
+const hasRole = computed(() => !!picked.value?.roles.includes(add.role))
+let lookupTimer: number | undefined
+let lookupSeq = 0
+
+watch(query, (q) => {
+  if (picked.value && q === picked.value.email) return
+  picked.value = null
+  window.clearTimeout(lookupTimer)
+  if (q.trim().length < 2) {
+    found.value = []
+    return
+  }
+  lookupTimer = window.setTimeout(async () => {
+    const seq = ++lookupSeq
+    searching.value = true
+    try {
+      const res = await orgsApi.lookupUser(q.trim())
+      if (seq !== lookupSeq) return
+      found.value = res
+      // Точное совпадение email — выбираем сразу
+      const exact = res.find((u) => u.email.toLowerCase() === q.trim().toLowerCase())
+      if (exact) pick(exact)
+    } catch {
+      found.value = []
+    } finally {
+      if (seq === lookupSeq) searching.value = false
+    }
+  }, 300)
+})
+
+function pick(u: MemberLookup) {
+  picked.value = u
+  query.value = u.email
+  found.value = []
+}
 
 function apply() {
   filters.page = 1
@@ -38,8 +80,11 @@ async function toggleActive(m: Member) {
 }
 
 async function addMember() {
-  if (await act(() => orgsApi.addMember(add.email, add.role), t('admin.members.added'))) {
-    add.email = ''
+  if (!picked.value || hasRole.value) return
+  const email = picked.value.email
+  if (await act(() => orgsApi.addMember(email, add.role), t('admin.members.added'))) {
+    query.value = ''
+    picked.value = null
     addOpen.value = false
     members.run()
   }
@@ -52,12 +97,44 @@ async function addMember() {
     <RouterLink to="/admin/invites" class="btn">{{ $t('admin.members.invite') }}</RouterLink>
   </PageHeader>
 
-  <form v-if="addOpen" class="card row" style="margin-bottom: var(--space-lg)" @submit.prevent="addMember">
-    <input v-model="add.email" type="email" :placeholder="$t('admin.members.emailPh')" style="max-width: 300px" required />
-    <select v-model="add.role" style="max-width: 180px">
-      <option v-for="(label, key) in roleOptions" :key="key" :value="key">{{ label }}</option>
-    </select>
-    <button class="btn" :disabled="busy">{{ $t('ui.add') }}</button>
+  <form v-if="addOpen" class="card add-member" @submit.prevent="addMember">
+    <div class="add-member__row">
+      <div class="add-member__field">
+        <input v-model="query" type="search" autocomplete="off" :placeholder="$t('admin.members.lookupPh')"
+               :aria-label="$t('admin.members.lookupPh')" />
+        <ul v-if="found.length && !picked" class="add-member__results">
+          <li v-for="u in found" :key="u.id">
+            <button type="button" @click="pick(u)">
+              <strong>{{ u.full_name }}</strong>
+              <span class="muted small">{{ u.email }}<template v-if="u.school"> · {{ u.school }}</template></span>
+              <span v-if="u.roles.length" class="badge badge--info">{{ $t('admin.members.lookupAlready') }}: {{ u.roles.map(roleLabel).join(', ') }}</span>
+            </button>
+          </li>
+        </ul>
+      </div>
+      <select v-model="add.role" :aria-label="$t('admin.invites.role')">
+        <option v-for="(label, key) in roleOptions" :key="key" :value="key">{{ label }}</option>
+      </select>
+      <button class="btn" :disabled="busy || !picked || hasRole">{{ $t('ui.add') }}</button>
+    </div>
+
+    <p v-if="picked" class="add-member__status add-member__status--ok">
+      <AppIcon name="check" :size="16" />
+      <span>
+        {{ $t('admin.members.lookupPicked') }}: <strong>{{ picked.full_name }}</strong> · {{ picked.email }}
+        <template v-if="picked.school"> · {{ picked.school }}</template>
+        —
+        <template v-if="picked.roles.length">{{ $t('admin.members.lookupAlready') }}: {{ picked.roles.map(roleLabel).join(', ') }}</template>
+        <template v-else>{{ $t('admin.members.lookupNotMember') }}</template>
+        <template v-if="hasRole">. {{ $t('admin.members.lookupHasRole') }}</template>
+      </span>
+    </p>
+    <p v-else-if="searching" class="add-member__status muted">{{ $t('admin.members.lookupSearching') }}</p>
+    <p v-else-if="looksLikeEmail && !found.length" class="add-member__status add-member__status--no">
+      <AppIcon name="x" :size="16" />
+      <span>{{ $t('admin.members.lookupNotFound') }} <RouterLink to="/admin/invites">{{ $t('admin.members.lookupInvite') }} →</RouterLink></span>
+    </p>
+    <p v-else class="add-member__status muted">{{ $t('admin.members.lookupHint') }}</p>
   </form>
 
   <div class="row row--between" style="margin-bottom: var(--space-lg)">
@@ -102,3 +179,80 @@ async function addMember() {
     <AppPager :page="filters.page" :total-pages="members.data.value?.total_pages ?? 1" @change="(p) => { filters.page = p; members.run() }" />
   </StateBlock>
 </template>
+
+<style scoped>
+.add-member {
+  display: grid;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+.add-member__row {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.add-member__row > select {
+  max-width: 180px;
+}
+.add-member__field {
+  position: relative;
+  flex: 1;
+  min-width: 240px;
+  max-width: 420px;
+}
+.add-member__results {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-3);
+  max-height: 320px;
+  overflow-y: auto;
+}
+.add-member__results button {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--text-strong);
+  cursor: pointer;
+}
+.add-member__results button:hover,
+.add-member__results button:focus-visible {
+  background: var(--surface-subtle);
+  outline: none;
+}
+.add-member__status {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--fs-body-sm);
+}
+.add-member__status--ok :deep(svg) {
+  color: var(--green-dark);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.add-member__status--no {
+  color: var(--error-text);
+}
+.add-member__status--no :deep(svg) {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+</style>
