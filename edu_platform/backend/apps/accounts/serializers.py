@@ -143,11 +143,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'avatar_url',
             'is_verified',
             'is_minor',
+            'is_superuser',
             'school',
             'roles',
             'created_at',
         )
-        read_only_fields = ('id', 'email', 'is_verified', 'is_minor', 'school', 'created_at', 'roles')
+        read_only_fields = ('id', 'email', 'is_verified', 'is_minor', 'is_superuser', 'school', 'created_at', 'roles')
 
     def get_roles(self, obj) -> list[str]:
         request = self.context.get('request')

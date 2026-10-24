@@ -74,6 +74,7 @@ async function onSubmit() {
         <template #link><RouterLink to="/privacy" target="_blank">{{ $t('auth.registerPrivacyLink') }}</RouterLink></template>
       </i18n-t>
       <p class="small muted">{{ $t('register.staffNote') }} <RouterLink to="/login">{{ $t('register.haveAccount') }}</RouterLink></p>
+      <p class="small muted">{{ $t('register.schoolRep') }} <RouterLink to="/schools/apply">{{ $t('schoolApply.cta') }} →</RouterLink></p>
     </form>
   </AuthCard>
 </template>

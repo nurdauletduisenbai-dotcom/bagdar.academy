@@ -13,6 +13,8 @@ declare module 'vue-router' {
     public?: boolean
     /** Только для гостей: авторизованного перекинет на главную */
     guestOnly?: boolean
+    /** Только суперпользователь платформы (заявки школ) */
+    superuser?: boolean
     /** Кому доступна страница (роль в текущей организации) */
     roles?: Role[]
     /** Ключ i18n заголовка вкладки (`titles.*`); переводится при показе и при смене языка */
@@ -42,6 +44,7 @@ const routes: RouteRecordRaw[] = [
       { path: '', name: 'landing', component: () => import('@/views/public/LandingView.vue'), meta: { public: true, guestOnly: true, seo: { title: 'seo.tagline', description: 'seo.description', brandFirst: true } } },
       { path: 'news', name: 'news', component: () => import('@/views/public/NewsListView.vue'), meta: { public: true, seo: { title: 'news.title', description: 'seo.newsDescription' } } },
       { path: 'news/:slug', name: 'news-post', component: () => import('@/views/public/PostView.vue'), props: true, meta: { public: true, seo: { title: 'news.title', description: 'seo.newsDescription' } } },
+      { path: 'schools/apply', name: 'school-apply', component: () => import('@/views/public/SchoolApplyView.vue'), meta: { public: true, seo: { title: 'schoolApply.title', description: 'schoolApply.lead' } } },
       { path: 'privacy', name: 'privacy', component: () => import('@/views/public/PrivacyView.vue'), meta: { public: true, seo: { title: 'public.privacy', description: 'seo.privacyDescription' } } },
     ],
   },
@@ -82,6 +85,8 @@ const routes: RouteRecordRaw[] = [
       { path: 'teach/submissions', name: 'submissions', component: () => import('@/views/teach/SubmissionsView.vue'), meta: { roles: TEACHERS, title: 'titles.submissions' } },
 
       // ---------- Администрирование ----------
+      { path: 'platform/applications', name: 'platform-applications', component: () => import('@/views/platform/ApplicationsView.vue'), meta: { superuser: true, title: 'platformApps.title' } },
+      { path: 'platform/applications/:id', name: 'platform-application', component: () => import('@/views/platform/ApplicationView.vue'), props: true, meta: { superuser: true, title: 'platformApps.title' } },
       { path: 'admin', name: 'admin', component: () => import('@/views/admin/AdminDashboardView.vue'), meta: { roles: ['admin'], title: 'titles.summary' } },
       { path: 'admin/members', name: 'members', component: () => import('@/views/admin/MembersView.vue'), meta: { roles: STAFF, title: 'titles.members' } },
       { path: 'admin/invites', name: 'invites', component: () => import('@/views/admin/InvitesView.vue'), meta: { roles: TEACHERS, title: 'titles.invites' } },
@@ -107,6 +112,10 @@ router.beforeEach((to) => {
     return { name: 'login', query: { next: to.fullPath } }
   }
   if (to.meta.guestOnly && auth.isAuthenticated) {
+    return { name: 'home' }
+  }
+  if (to.meta.superuser && !auth.isSuperuser) {
+    useToast().error(i18n.global.t('ui.forbidden'))
     return { name: 'home' }
   }
   if (to.meta.roles && !auth.hasRole(...to.meta.roles)) {

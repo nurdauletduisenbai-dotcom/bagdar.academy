@@ -35,6 +35,8 @@ export interface AuthUser {
   email: string
   full_name: string
   is_verified: boolean
+  /** Суперпользователь платформы: видит раздел «Заявки школ» */
+  is_superuser: boolean
   org_id: ID | null
   roles: Role[]
   organizations: OrganizationBrief[]
@@ -70,6 +72,7 @@ export interface UserProfile {
   avatar_url: string | null
   is_verified: boolean
   is_minor: boolean
+  is_superuser: boolean
   /** Школа из справочника; is_approved=false — добавлена учеником и ждёт проверки */
   school: {
     id: ID
@@ -685,4 +688,75 @@ export interface NewSchoolPayload {
   kind: SchoolKind
   region: ID
   locality: string
+}
+
+/** Заявка на подключение школы (POST /schools/applications/) — рассматривает суперпользователь */
+export interface SchoolApplicationPayload {
+  school_id: ID | null
+  new_school: NewSchoolPayload | null
+  org_type: 'school' | 'center' | 'club'
+  contact_name: string
+  position: string
+  email: string
+  phone: string
+  students_count: number | null
+  bin: string
+  message: string
+  language: string
+  consent: boolean
+}
+
+// ---------- Заявки школ: рассмотрение суперпользователем на сайте ----------
+export type ApplicationStatus = 'new' | 'needs_info' | 'approved' | 'rejected'
+
+export interface ManagedApplication {
+  id: ID
+  status: ApplicationStatus
+  school: {
+    id: ID
+    name: string
+    name_kk: string
+    name_ru: string
+    kind: SchoolKind
+    region: ID
+    region_name_ru: string
+    region_name_kk: string
+    locality: string
+    is_approved: boolean
+    is_active: boolean
+    source: 'osm' | 'import' | 'admin' | 'user'
+    organization: ID | null
+    /** Email действующих администраторов организации школы */
+    admins: string[]
+  }
+  org_type: SchoolApplicationPayload['org_type']
+  contact_name: string
+  position: string
+  email: string
+  phone: string
+  students_count: number | null
+  bin: string
+  message: string
+  language: string
+  is_claim: boolean
+  review_note: string
+  reviewed_by_email: string
+  reviewed_at: string | null
+  created_at: string
+  /** Только в ответе на «Одобрить» */
+  result?: { invited: boolean; org_id: ID; org_name: string }
+}
+
+export interface ManagedApplicationPatch {
+  school_id?: ID
+  school_edit?: Partial<Pick<ManagedApplication['school'], 'name' | 'name_kk' | 'name_ru' | 'kind' | 'region' | 'locality'>>
+  org_type?: SchoolApplicationPayload['org_type']
+  contact_name?: string
+  position?: string
+  email?: string
+  phone?: string
+  students_count?: number | null
+  bin?: string
+  message?: string
+  review_note?: string
 }
