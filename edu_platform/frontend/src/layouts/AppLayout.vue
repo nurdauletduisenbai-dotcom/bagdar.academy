@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { applicationsApi } from '@/api/schools'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import BrandLogo from '@/components/ui/BrandLogo.vue'
 import LangSwitcher from '@/components/ui/LangSwitcher.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useLocaleStore } from '@/stores/locale'
@@ -103,7 +104,7 @@ onUnmounted(() => {
   <header class="topnav">
     <div class="topnav__inner">
       <button class="icon-btn burger" :aria-label="$t('public.menu')" @click="mobileOpen = !mobileOpen"><AppIcon name="menu" /></button>
-      <RouterLink to="/home" class="brand">bagdar<span class="brand__dot">.</span></RouterLink>
+      <RouterLink to="/home" class="brand" aria-label="bagdar.academy"><BrandLogo :height="44" /></RouterLink>
 
       <nav class="topnav__links" :class="{ open: mobileOpen }">
         <RouterLink v-if="auth.isSuperuser" :to="{ name: 'platform-applications' }" class="topnav__link"
@@ -190,15 +191,14 @@ onUnmounted(() => {
   align-items: center;
   gap: var(--space-xxl);
 }
+/* Логотип — SVG с встроенным охранным полем; сдвигаем влево на величину поля, чтобы знак встал по краю */
 .brand {
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.5px;
-  color: var(--text-strong);
+  display: inline-flex;
+  margin-left: -9px;
   text-decoration: none;
 }
-.brand__dot {
-  color: var(--green-600);
+.brand:hover {
+  text-decoration: none;
 }
 .topnav__links {
   display: flex;

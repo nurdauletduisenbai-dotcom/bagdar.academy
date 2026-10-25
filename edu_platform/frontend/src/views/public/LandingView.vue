@@ -270,7 +270,8 @@ const glyphs = [
 /* ---------- Герой ---------- */
 .hero {
   position: relative;
-  background: radial-gradient(120% 120% at 0% 0%, var(--teal-700) 0%, var(--teal-900) 65%);
+  /* Фон «тёмные дуги» из дизайн-системы — для hero-блока сайта */
+  background: var(--brand-deep) url('@/assets/brand/bg-arcs-dark.svg') right center / cover no-repeat;
   color: var(--text-on-dark);
   padding: var(--space-section) 0;
   overflow: hidden;
@@ -321,7 +322,7 @@ const glyphs = [
   height: 520px;
   left: -160px;
   bottom: -260px;
-  background: #00a38a;
+  background: var(--brand-tint-2);
   opacity: 0.25;
   animation: drift 20s ease-in-out infinite reverse;
 }
@@ -346,9 +347,9 @@ const glyphs = [
 /* Бегущая строка предметов */
 .ticker {
   overflow: hidden;
-  background: var(--green-500);
-  color: var(--teal-900);
-  border-block: 1px solid rgba(0, 30, 43, 0.12);
+  background: var(--brand-tint);
+  color: var(--brand-deep);
+  border-block: 1px solid rgba(14, 107, 92, 0.15);
   mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
 }
 .ticker__track {
@@ -369,7 +370,7 @@ const glyphs = [
 }
 .ticker__item i {
   font-style: normal;
-  opacity: 0.45;
+  color: var(--accent-deep);
 }
 
 /* Карточки приподнимаются при наведении */
@@ -396,7 +397,7 @@ const glyphs = [
 }
 .hero__title {
   margin: 0;
-  font: 500 var(--fs-display-lg) / 1.06 var(--font-sans);
+  font: 800 var(--fs-display-lg) / 1.07 var(--font-display);
   letter-spacing: -1px;
   color: var(--text-on-dark);
   max-width: 14ch;
@@ -509,6 +510,12 @@ const glyphs = [
 .section__head h2,
 .section__head p {
   margin: 0;
+}
+/* Заголовки разделов — h2 дизайн-системы: Montserrat 700, 28/34 */
+.section__head h2,
+.cta h2 {
+  font-size: var(--fs-h2);
+  line-height: var(--lh-h2);
 }
 .section__head--row {
   display: flex;
@@ -764,6 +771,8 @@ const glyphs = [
 .cta {
   position: relative;
   overflow: hidden;
+  /* Финальный призыв — на фоне «тёмные дуги», как hero */
+  background: var(--brand-deep) url('@/assets/brand/bg-arcs-dark.svg') right center / cover no-repeat;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -888,6 +897,8 @@ const glyphs = [
 @media (max-width: 640px) {
   .hero {
     padding: var(--space-section-sm) 0;
+    /* Узкий экран: сдвигаем фон, чтобы янтарный диск «дуг» не лёг на заголовок */
+    background-position: left bottom;
   }
   .hero__title {
     font-size: var(--fs-h2);

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BrandLogo from '@/components/ui/BrandLogo.vue'
 import LangSwitcher from '@/components/ui/LangSwitcher.vue'
 
 /** Вход/регистрация: слева teal-панель с брендом, справа форма (вайрфрейм 2a) */
@@ -8,7 +9,7 @@ defineProps<{ title: string; subtitle?: string }>()
 <template>
   <div class="auth">
     <aside class="auth__brand">
-      <RouterLink to="/" class="auth__logo">bagdar<span>.</span></RouterLink>
+      <RouterLink to="/" class="auth__logo" aria-label="bagdar.academy"><BrandLogo dark :height="52" /></RouterLink>
       <div class="auth__pitch">
         <div class="eyebrow">bagdar.academy</div>
         <p class="auth__slogan">{{ $t('auth.brandSlogan') }}</p>
@@ -33,7 +34,8 @@ defineProps<{ title: string; subtitle?: string }>()
   grid-template-columns: minmax(320px, 5fr) 7fr;
 }
 .auth__brand {
-  background: radial-gradient(120% 80% at 0% 0%, var(--teal-700) 0%, var(--teal-900) 60%);
+  /* Фон «кольца компаса» из дизайн-системы — для титульных экранов */
+  background: #0b1a18 url('@/assets/brand/bg-compass-dark.svg') right -266px bottom -173px / 1400px auto no-repeat;
   color: var(--text-on-dark);
   padding: var(--space-xxxl);
   display: flex;
@@ -42,14 +44,9 @@ defineProps<{ title: string; subtitle?: string }>()
   gap: var(--space-xxl);
 }
 .auth__logo {
-  font-size: 26px;
-  font-weight: 600;
-  letter-spacing: -0.5px;
-  color: var(--text-on-dark);
-  text-decoration: none;
-}
-.auth__logo span {
-  color: var(--green-500);
+  display: inline-flex;
+  align-self: flex-start;
+  margin-left: -10px;
 }
 .auth__pitch .eyebrow {
   color: var(--green-500);
@@ -60,8 +57,8 @@ defineProps<{ title: string; subtitle?: string }>()
   max-width: 460px;
 }
 .auth__slogan {
-  font: 500 var(--fs-h2) / var(--lh-h2) var(--font-sans);
-  letter-spacing: -0.5px;
+  font: 800 var(--fs-h1) / var(--lh-h1) var(--font-display);
+  letter-spacing: -0.6px;
   margin: 0;
 }
 .auth__note {

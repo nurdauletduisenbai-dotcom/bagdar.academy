@@ -1,76 +1,100 @@
 /*
- * bagdar.academy — стили на дизайн-системе EdTeach.
- * Токены (цвета, шрифты, отступы) — один в один из дизайн-системы проекта
- * «Education platform wireframes» (Claude Design). Меняете дизайн — меняйте токены ниже.
+ * bagdar.academy — стили на дизайн-системе «bagdar.academy-design-v0.1» (Claude Design).
+ * Базовые цвета бренда: brand #0E6B5C, brand-deep #0A4F45, brand-tint #DCEEE7/#BFE0D4,
+ * accent (янтарная «звезда») #F4A62A, surface (кремовый) #F7F4EC, ink #10201D, signal #B4481F, line #E3DDCF.
+ * Шрифты: Montserrat — заголовки, Inter — текст (оба с казахской кириллицей).
+ * Старые имена палитры (--green-*, --teal-*) оставлены как алиасы, чтобы компоненты подхватили бренд.
  */
-@import '@fontsource/dm-sans/latin-400.css';
-@import '@fontsource/dm-sans/latin-500.css';
-@import '@fontsource/dm-sans/latin-600.css';
-@import '@fontsource/dm-sans/latin-700.css';
-/* В DM Sans нет кириллицы — для русского/казахского текста близкий по геометрии Manrope */
-@import '@fontsource/manrope/cyrillic-400.css';
-@import '@fontsource/manrope/cyrillic-500.css';
-@import '@fontsource/manrope/cyrillic-600.css';
-@import '@fontsource/manrope/cyrillic-700.css';
-@import '@fontsource/manrope/cyrillic-ext-400.css';
-@import '@fontsource/manrope/cyrillic-ext-600.css';
+@import '@fontsource/inter/latin-400.css';
+@import '@fontsource/inter/latin-500.css';
+@import '@fontsource/inter/latin-600.css';
+@import '@fontsource/inter/latin-700.css';
+@import '@fontsource/inter/cyrillic-400.css';
+@import '@fontsource/inter/cyrillic-500.css';
+@import '@fontsource/inter/cyrillic-600.css';
+@import '@fontsource/inter/cyrillic-700.css';
+@import '@fontsource/inter/cyrillic-ext-400.css';
+@import '@fontsource/inter/cyrillic-ext-500.css';
+@import '@fontsource/inter/cyrillic-ext-600.css';
+@import '@fontsource/inter/cyrillic-ext-700.css';
+@import '@fontsource/montserrat/latin-600.css';
+@import '@fontsource/montserrat/latin-700.css';
+@import '@fontsource/montserrat/latin-800.css';
+@import '@fontsource/montserrat/cyrillic-600.css';
+@import '@fontsource/montserrat/cyrillic-700.css';
+@import '@fontsource/montserrat/cyrillic-800.css';
+@import '@fontsource/montserrat/cyrillic-ext-600.css';
+@import '@fontsource/montserrat/cyrillic-ext-700.css';
+@import '@fontsource/montserrat/cyrillic-ext-800.css';
 
 /* ================= Токены дизайн-системы ================= */
 :root {
-  /* Бренд: зелёный */
-  --green-500: #00ed64;
-  --green-600: #00b545;
-  --green-700: #008c34;
-  --green-dark: #00684a;
-  --green-mid: #00a35c;
-  --green-soft: #c3f0d2;
-  /* Бренд: teal */
-  --teal-900: #001e2b;
-  --teal-700: #003d4f;
-  --teal-500: #00684a;
+  /* bagdar.academy — исходные токены дизайн-системы */
+  --brand: #0e6b5c;
+  --brand-deep: #0a4f45;
+  --brand-pressed: #083f37;
+  --brand-tint: #dceee7;
+  --brand-tint-2: #bfe0d4;
+  --accent: #f4a62a;
+  --accent-deep: #e0901a;
+  --signal: #b4481f;
+  --cream: #f7f4ec;
+  --cream-2: #f1ece0;
+  --line: #e3ddcf;
+
+  /* Алиасы старой палитры → бренд (их используют компоненты) */
+  --green-500: var(--accent); /* яркий акцент: плашки, цифры, акцент на тёмном */
+  --green-600: var(--accent-deep); /* точка в логотипе-тексте, ховер акцента */
+  --green-700: var(--brand-deep);
+  --green-dark: var(--brand); /* ссылки, рамки, иконки на светлом */
+  --green-mid: var(--brand);
+  --green-soft: var(--brand-tint-2);
+  --teal-900: var(--brand-deep); /* тёмные полосы, подвал, аватар; тёмный текст на янтаре */
+  --teal-700: var(--brand); /* светлый край тёмных градиентов */
+  --teal-500: var(--brand);
   /* Акценты категорий (только теги курсов) */
-  --accent-purple: #7b3ff2;
-  --accent-orange: #fa6e39;
-  --accent-pink: #f06bb8;
-  --accent-blue: #3d4f9f;
+  --accent-purple: #6b4fc8;
+  --accent-orange: #c4602a;
+  --accent-pink: #c24d8c;
+  --accent-blue: #3d5a9f;
   /* Семантика */
-  --warning-bg: #fff8e0;
-  --warning-text: #946f3f;
-  --error-bg: #ffeae8;
-  --error-text: #c4271d;
+  --warning-bg: #fdf1dc;
+  --warning-text: #8a5a12;
+  --error-bg: #f9e7df;
+  --error-text: var(--signal);
   /* Поверхности */
-  --canvas: #ffffff;
-  --canvas-dark: #001e2b;
-  --surface: #f9fbfa;
-  --surface-soft-base: #f4f7f6;
-  --surface-feature-base: #e3fcef;
+  --canvas: #ffffff; /* surface-raised: карточки, поля, меню */
+  --canvas-dark: var(--brand-deep);
+  --surface: #fbf9f4;
+  --surface-soft-base: var(--cream-2);
+  --surface-feature-base: var(--brand-tint);
   /* Линии */
-  --hairline: #e1e5e8;
-  --hairline-soft: #eceff1;
-  --hairline-strong: #c1ccd6;
-  --hairline-dark: #1c2d38;
+  --hairline: var(--line);
+  --hairline-soft: #ece7db;
+  --hairline-strong: #cbc2ae;
+  --hairline-dark: rgba(255, 255, 255, 0.16);
   /* Текст */
-  --ink: #001e2b;
-  --charcoal: #1c2d38;
-  --slate: #3d4f5b;
-  --steel: #5c6c7a;
-  --stone: #7c8c9a;
-  --muted: #a8b3bc;
+  --ink: #10201d;
+  --charcoal: #1d2f2b;
+  --slate: #4f5f5b; /* вторичный текст: 6:1 на кремовом */
+  --steel: #5b6b67; /* ink-muted: 5:1 */
+  --stone: #77857f;
+  --muted: #a3ada9;
   --on-dark: #ffffff;
-  --on-dark-muted: #a8b3bc;
+  --on-dark-muted: #c3dbd3;
 
   /* Семантические алиасы — в компонентах используйте их */
-  --color-primary: var(--green-500);
-  --color-primary-deep: var(--green-600);
-  --color-primary-pressed: var(--green-700);
-  --color-on-primary: var(--teal-900);
-  --surface-page: var(--canvas);
+  --color-primary: var(--brand);
+  --color-primary-deep: var(--brand-deep);
+  --color-primary-pressed: var(--brand-pressed);
+  --color-on-primary: #ffffff;
+  --surface-page: var(--cream);
   --surface-card: var(--canvas);
   --surface-subtle: var(--surface);
   --surface-soft: var(--surface-soft-base);
   --surface-feature: var(--surface-feature-base);
-  --surface-dark: var(--teal-900);
-  --surface-dark-raised: var(--teal-500);
+  --surface-dark: var(--brand-deep);
+  --surface-dark-raised: var(--brand);
   --text-strong: var(--ink);
   --text-body: var(--ink);
   --text-emphasis: var(--charcoal);
@@ -80,29 +104,30 @@
   --text-disabled: var(--muted);
   --text-on-dark: var(--on-dark);
   --text-on-dark-muted: var(--on-dark-muted);
-  --text-link: var(--green-dark);
-  --text-accent-on-dark: var(--green-500);
+  --text-link: var(--brand);
+  --text-accent-on-dark: var(--accent);
   --border-default: var(--hairline);
   --border-soft: var(--hairline-soft);
   --border-strong: var(--hairline-strong);
   --border-dark: var(--hairline-dark);
-  --border-focus: var(--green-dark);
-  --border-featured: var(--green-500);
+  --border-focus: var(--brand);
+  --border-featured: var(--accent);
 
   /* Типографика */
-  --font-sans: 'DM Sans', 'Manrope', 'Euclid Circular A', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Montserrat', 'Poppins', 'Inter', system-ui, sans-serif;
   --font-mono: 'Source Code Pro', 'SF Mono', Menlo, Consolas, monospace;
-  --fs-hero: 72px;
-  --lh-hero: 1.1;
+  --fs-hero: 64px;
+  --lh-hero: 1.05;
   --fs-display-lg: 56px;
-  --fs-h1: 48px;
-  --lh-h1: 1.2;
-  --fs-h2: 36px;
-  --lh-h2: 1.25;
-  --fs-h3: 28px;
-  --lh-h3: 1.3;
-  --fs-h4: 22px;
-  --lh-h4: 1.35;
+  --fs-h1: 40px;
+  --lh-h1: 1.15;
+  --fs-h2: 28px;
+  --lh-h2: 1.21;
+  --fs-h3: 22px;
+  --lh-h3: 1.27;
+  --fs-h4: 20px;
+  --lh-h4: 1.3;
   --fs-h5: 18px;
   --lh-h5: 1.4;
   --fs-subtitle: 18px;
@@ -133,15 +158,15 @@
   --space-section: 64px;
   --radius-xs: 4px;
   --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-xxl: 24px;
+  --radius-md: 8px; /* поля ввода, теги (radius-sm бренда) */
+  --radius-lg: 16px; /* кнопки, карточки (radius-md бренда) */
+  --radius-xl: 20px;
+  --radius-xxl: 26px; /* крупные плитки, подложка знака (radius-lg бренда) */
   --radius-full: 9999px;
-  --shadow-1: rgba(0, 30, 43, 0.04) 0 1px 2px 0;
-  --shadow-2: rgba(0, 30, 43, 0.08) 0 4px 12px 0;
-  --shadow-3: rgba(0, 30, 43, 0.12) 0 12px 24px -4px;
-  --shadow-4: rgba(0, 30, 43, 0.16) 0 16px 48px -8px;
+  --shadow-1: rgba(16, 32, 29, 0.05) 0 1px 2px 0;
+  --shadow-2: rgba(16, 32, 29, 0.08) 0 4px 12px 0;
+  --shadow-3: rgba(16, 32, 29, 0.12) 0 12px 24px -4px;
+  --shadow-4: rgba(16, 32, 29, 0.16) 0 16px 48px -8px;
   --dur-fast: 150ms;
   --dur-base: 200ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
@@ -187,18 +212,20 @@ h3 {
   color: var(--text-strong);
 }
 
+/* Заголовки — Montserrat (display), как в дизайн-системе bagdar.academy */
 h1 {
-  font: 500 var(--fs-h3) / var(--lh-h3) var(--font-sans);
-  letter-spacing: -0.5px;
+  font: 700 var(--fs-h2) / var(--lh-h2) var(--font-display);
+  letter-spacing: -0.4px;
 }
 
 h2 {
-  font: 600 var(--fs-h5) / var(--lh-h5) var(--font-sans);
+  font: 700 var(--fs-h5) / var(--lh-h5) var(--font-display);
+  letter-spacing: -0.2px;
   margin-bottom: var(--space-sm);
 }
 
 h3 {
-  font: 600 var(--fs-body-md) / var(--lh-body-md) var(--font-sans);
+  font: 600 var(--fs-body-md) / var(--lh-body-md) var(--font-display);
   margin-bottom: var(--space-xs);
 }
 
@@ -392,7 +419,7 @@ pre {
 }
 
 .stat {
-  font: 500 var(--fs-h3) / 1.15 var(--font-sans);
+  font: 700 var(--fs-h3) / 1.15 var(--font-display);
   letter-spacing: -0.5px;
   color: var(--text-strong);
 }
@@ -579,10 +606,10 @@ textarea::placeholder {
   align-items: center;
   justify-content: center;
   gap: var(--space-xs);
-  font: 500 var(--fs-button) / 1.3 var(--font-sans);
+  font: 600 var(--fs-button) / 1.3 var(--font-sans);
   padding: 10px 22px;
   border: 1px solid transparent;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-lg); /* 16px — radius-md бренда */
   background: var(--color-primary);
   color: var(--color-on-primary);
   cursor: pointer;
