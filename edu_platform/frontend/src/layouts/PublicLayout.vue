@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import AppIcon from '@/components/ui/AppIcon.vue'
+import BrandLogo from '@/components/ui/BrandLogo.vue'
 import LangSwitcher from '@/components/ui/LangSwitcher.vue'
 import { SITE_CONTACTS } from '@/config/site'
 import { useAuthStore } from '@/stores/auth'
@@ -41,7 +42,7 @@ watch(() => route.fullPath, () => (menuOpen.value = false))
 <template>
   <header class="pub-nav">
     <div class="pub-nav__inner">
-      <RouterLink to="/" class="brand">bagdar<span class="brand__dot">.</span></RouterLink>
+      <RouterLink to="/" class="brand" aria-label="bagdar.academy"><BrandLogo :height="44" /></RouterLink>
 
       <nav class="pub-nav__links" :class="{ open: menuOpen }">
         <RouterLink v-for="l in links" :key="l.key" :to="l.to" class="pub-nav__link"
@@ -74,7 +75,7 @@ watch(() => route.fullPath, () => (menuOpen.value = false))
   <footer class="pub-footer">
     <div class="container pub-footer__inner" :class="{ 'pub-footer__inner--contacts': contacts.length }">
       <div class="pub-footer__brand">
-        <RouterLink to="/" class="brand brand--dark">bagdar<span class="brand__dot">.</span></RouterLink>
+        <RouterLink to="/" class="brand brand--dark" aria-label="bagdar.academy"><BrandLogo dark :height="48" /></RouterLink>
         <p class="pub-footer__note">{{ $t('public.footerNote') }}</p>
       </div>
       <nav class="pub-footer__links">
@@ -118,21 +119,14 @@ watch(() => route.fullPath, () => (menuOpen.value = false))
   align-items: center;
   gap: var(--space-xxl);
 }
+/* Логотип — SVG с встроенным охранным полем; сдвигаем влево на величину поля, чтобы знак встал по краю */
 .brand {
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.5px;
-  color: var(--text-strong);
+  display: inline-flex;
+  margin-left: -9px;
   text-decoration: none;
 }
-.brand--dark {
-  color: var(--text-on-dark);
-}
-.brand__dot {
-  color: var(--green-600);
-}
-.brand--dark .brand__dot {
-  color: var(--green-500);
+.brand:hover {
+  text-decoration: none;
 }
 .pub-nav__links {
   display: flex;

@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 
 import { coverSrc } from '@/api/news'
+import BrandLogo from '@/components/ui/BrandLogo.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import type { NewsCategory, NewsPost } from '@/types/api'
 import { fmtDateLong } from '@/utils/format'
@@ -22,7 +23,7 @@ const cover = computed(() => coverSrc(props.post))
   <RouterLink :to="`/news/${post.slug}`" class="card card--link post-card" :class="{ 'post-card--featured': featured }">
     <div class="post-card__cover">
       <img v-if="cover" :src="cover" alt="" loading="lazy" />
-      <span v-else class="post-card__mark" aria-hidden="true">bagdar<span>.</span></span>
+      <BrandLogo v-else mark dark :height="featured ? 88 : 56" class="post-card__mark" aria-hidden="true" />
     </div>
     <div class="post-card__body">
       <div class="row post-card__meta">

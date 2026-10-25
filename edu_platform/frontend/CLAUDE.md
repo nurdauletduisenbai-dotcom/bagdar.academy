@@ -24,7 +24,7 @@ student1@fizmat.kz / StudentPassword123!, parent@fizmat.kz / ParentPassword123!.
 - `components/ui/`: `AppModal`, `AppPager`, `AppBadge`, `StateBlock` (загрузка/ошибка/пусто), `PageHeader`, `ProgressBar`, `ToastHost`, `MathText` (формулы `$…$` через KaTeX).
 - `views/`: `auth/`, `courses/`, `tests/`, `assignments/`, `progress/`, `teach/` (учитель), `admin/`; общие страницы — в корне.
 - `demo.ts`: демо-аккаунты для кнопок быстрого входа (`VITE_SHOW_DEMO_ACCOUNTS=false` — скрыть).
-- `assets/main.css`: дизайн-система **EdTeach** (Claude Design, проект «Education platform wireframes»): токены и базовые классы.
+- `assets/main.css`: дизайн-система **bagdar.academy-design-v0.1** (Claude Design, https://claude.ai/artifact/4QD1MBJm1JJUbZH9CvDPKm): токены и базовые классы. `assets/brand/` — логотипы и фоны оттуда же, `components/ui/BrandLogo.vue` — логотип, всегда латиницей «bagdar.academy» независимо от языка.
 - `i18n/`: локализация (`vue-i18n`, composition-режим). См. раздел «Локализация» ниже.
 
 ## Локализация (RU / KK)
@@ -46,9 +46,11 @@ student1@fizmat.kz / StudentPassword123!, parent@fizmat.kz / ParentPassword123!.
 
 **Как переводить новый текст:** добавь ключ в оба файла `i18n/locales/{kk,ru}.ts` (не только в один — иначе `fallbackLocale` покажет русский для казахского), замени литерал в шаблоне на `{{ $t('раздел.ключ') }}` (или `:prop="$t(...)"` для атрибутов), для `<script setup>` — `const { t } = useI18n()`, вне компонентов — `i18n.global.t(...)` (как в `utils/format.ts`). Не переводи пользовательские данные с бэкенда (имена, названия курсов) — только статичный интерфейсный текст.
 
-## Дизайн (EdTeach, вариант 1a вайрфреймов)
-- **Цвета только через токены**: `--color-primary` (зелёный `#00ed64`, CTA), `--surface-dark`/`--teal-900` (тёмные полосы), `--text-strong/secondary/tertiary`, `--border-default/strong`, `--surface-subtle/soft/feature`, `--warning-*`, `--error-*`. Новые цвета не хардкодить.
-- **Шрифты**: DM Sans (латиница, цифры) + Manrope (кириллица) — подключены через `@fontsource` в `main.css`.
+## Дизайн (bagdar.academy-design-v0.1; раскладка экранов — по вайрфреймам 1a)
+- **Цвета только через токены**: `--brand` #0E6B5C (кнопки, ссылки; текст на нём белый), `--brand-deep` #0A4F45 (тёмные полосы, hero), `--brand-tint`/`--brand-tint-2` (подложки), `--accent` #F4A62A (янтарная «звезда»: только формы и акценты, ≤10% площади, не текст на светлом), `--surface-page` кремовый #F7F4EC, карточки белые, `--signal` для ошибок. Старые имена (`--green-*`, `--teal-*`) — алиасы на бренд: `--green-500` = accent, `--teal-900` = brand-deep. Новые цвета не хардкодить.
+- **Фоны** из системы: `bg-arcs-dark` — hero и финальный призыв главной, `bg-compass-dark` — панель входа/регистрации.
+- **Радиусы**: 8 — поля и теги, 16 — кнопки и карточки, 26 — крупные плитки.
+- **Шрифты**: Montserrat — заголовки (`--font-display`, 700/800), Inter — текст (`--font-sans`); оба с казахской кириллицей, подключены через `@fontsource` в `main.css`.
 - **Раскладка**: верхнее меню (`layouts/AppLayout.vue`, ≤5 пунктов на роль из `layouts/navigation.ts`), остальное — в меню аватара.
 - **Классы**:
   - `btn` — зелёная «пилюля» (главное действие, одно на экран); `btn--ghost` — контур; `btn--text` — без рамки; `btn--dark`; `btn--danger`; размеры `btn--sm/--lg`, `btn--block`.
