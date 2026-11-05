@@ -1,0 +1,18 @@
+[Unit]
+Description=@DOMAIN@ — Celery beat (периодические задачи)
+After=network.target redis-server.service
+Wants=redis-server.service
+
+[Service]
+User=nur
+Group=nur
+WorkingDirectory=@REPO_DIR@/edu_platform/backend
+Environment=DJANGO_SETTINGS_MODULE=config.settings.prod
+StateDirectory=@SVC@
+ExecStart=@REPO_DIR@/venv/bin/celery -A config beat -l info \
+    --schedule /var/lib/@SVC@/celerybeat-schedule
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

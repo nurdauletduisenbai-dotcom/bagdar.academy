@@ -1,0 +1,55 @@
+name: Deploy
+
+# Автодеплой после зелёного CI на push:
+#   main    -> https://bagdar.academy      (окружение prod)
+#   develop -> https://dev.bagdar.academy  (окружение dev)
+# Ключ из секрета DEPLOY_SSH_KEY на сервере умеет только запустить edu_platform/deploy/ci-deploy.sh
+# (см. `setup.sh ci-key`), поэтому команда ssh — это имя окружения.
+on:
+  workflow_run:
+    workflows: [EduPlatform CI]
+    types: [completed]
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Окружение
+        type: choice
+        options: [prod, dev]
+        default: dev
+
+env:
+  SERVER: nur@109.248.198.199
+  SERVER_HOST_KEY: 109.248.198.199 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILkkVaIiHUOVG2M3+0idVOdLNjlQpR/C43+CSjwSGQw8
+
+jobs:
+  deploy:
+    # Только успешный CI на push (не PR) или ручной запуск
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    env:
+      TARGET: ${{ github.event_name == 'workflow_dispatch' && inputs.target || (github.event.workflow_run.head_branch == 'main' && 'prod' || 'dev') }}
+    # Деплои одного окружения идут по очереди, новый не отменяет текущий
+    concurrency:
+      group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.target || (github.event.workflow_run.head_branch == 'main' && 'prod' || 'dev') }}
+      cancel-in-progress: false
+    environment:
+      name: ${{ (github.event_name == 'workflow_dispatch' && inputs.target || (github.event.workflow_run.head_branch == 'main' && 'prod' || 'dev')) == 'prod' && 'production' || 'dev' }}
+      url: ${{ (github.event_name == 'workflow_dispatch' && inputs.target || (github.event.workflow_run.head_branch == 'main' && 'prod' || 'dev')) == 'prod' && 'https://bagdar.academy' || 'https://dev.bagdar.academy' }}
+    timeout-minutes: 30
+    steps:
+      - name: Deploy ${{ env.TARGET }} over SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          if [ -z "$SSH_KEY" ]; then
+            echo "::error::Нет секрета DEPLOY_SSH_KEY (Settings → Secrets and variables → Actions). См. edu_platform/deploy/README.md"
+            exit 1
+          fi
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "$SERVER_HOST_KEY" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o ServerAliveInterval=30 "$SERVER" "$TARGET"
