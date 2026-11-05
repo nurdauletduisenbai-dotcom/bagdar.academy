@@ -16,6 +16,8 @@ qrcode>=7.4.2
 # Async & Task Queue
 celery>=5.3.6
 redis>=5.0.3
+# kombu 5.7 импортирует packaging для Redis-транспорта, но не объявляет его в зависимостях
+packaging>=24.0
 
 # Payments
 stripe>=10.0.0
