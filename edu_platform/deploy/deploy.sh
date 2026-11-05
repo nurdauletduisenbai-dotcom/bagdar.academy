@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
-# Обновить сервер до свежей версии из GitHub (запускать от пользователя nur, без sudo):
-#   bash ~/apps/backend-bagdar.academy/edu_platform/deploy/deploy.sh          # ветка main
-#   bash ~/apps/backend-bagdar.academy/edu_platform/deploy/deploy.sh develop  # другая ветка
+# Обновить окружение до свежей версии из GitHub (от пользователя nur, без sudo):
+#   bash ~/apps/backend-bagdar.academy/edu_platform/deploy/deploy.sh        # prod: bagdar.academy, ветка main
+#   bash ~/apps/backend-bagdar.academy/edu_platform/deploy/deploy.sh dev    # dev: dev.bagdar.academy, ветка develop
+# Из GitHub Actions вызывается через ci-deploy.sh после зелёного CI.
 set -euo pipefail
 
-BRANCH="${1:-main}"
-REPO_DIR=/home/nur/apps/backend-bagdar.academy
-VENV="$REPO_DIR/venv"
-WEB_ROOT=/var/www/bagdar.academy
+# shellcheck source=environments.sh
+. "$(dirname "$0")/environments.sh"
+load_env "${1:-prod}"
 export DJANGO_SETTINGS_MODULE=config.settings.prod
+# pip иногда зависает на оборванном соединении с PyPI — без таймаута деплой висит бесконечно
+export PIP_DEFAULT_TIMEOUT=30
 
-step() { printf '\n\033[1;34m→ %s\033[0m\n' "$*"; }
+step() { printf '\n\033[1;34m→ [%s] %s\033[0m\n' "$ENV_NAME" "$*"; }
+
+# Один деплой за раз: на 1 ГБ RAM две параллельные сборки фронтенда не помещаются
+exec 9>/tmp/bagdar-deploy.lock
+flock 9
 
 step "Код: $BRANCH"
 cd "$REPO_DIR"
@@ -38,15 +44,16 @@ cd "$REPO_DIR/edu_platform/backend"
 "$VENV/bin/python" manage.py check --deploy --fail-level ERROR
 
 step "Перезапуск сервисов"
-sudo /usr/bin/systemctl restart bagdar-backend bagdar-worker bagdar-beat
+# shellcheck disable=SC2086
+sudo /usr/bin/systemctl restart $SERVICES
 
 step "Проверка"
-for _ in $(seq 1 20); do
-    if curl -fsS -H 'Host: bagdar.academy' -H 'X-Forwarded-Proto: https' http://127.0.0.1:8000/ready/; then
-        printf '\n\033[1;32m✓ Готово: %s\033[0m\n' "$(git -C "$REPO_DIR" log --oneline -1)"
+for _ in $(seq 1 30); do
+    if curl -fsS -H "Host: $DOMAIN" -H 'X-Forwarded-Proto: https' "http://127.0.0.1:$PORT/ready/"; then
+        printf '\n\033[1;32m✓ %s: %s\033[0m\n' "$DOMAIN" "$(git -C "$REPO_DIR" log --oneline -1)"
         exit 0
     fi
     sleep 1
 done
-echo "✗ Бэкенд не ответил. Логи: journalctl -u bagdar-backend -n 50" >&2
+echo "✗ $DOMAIN: бэкенд не ответил. Логи: journalctl -u $SVC-backend -n 50" >&2
 exit 1

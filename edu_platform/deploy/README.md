@@ -1,55 +1,80 @@
 # Сервер bagdar.academy
 
-VPS на Ubuntu 24.04 (`109.248.198.199`, вход `root`, приложение работает от пользователя `nur`). Всё работает без Docker:
+VPS на Ubuntu 24.04 (`109.248.198.199`, вход `root`, приложение работает от пользователя `nur`). Всё работает без Docker.
+На сервере два окружения, настройки каждого — в [environments.sh](environments.sh):
+
+| | prod | dev |
+|---|---|---|
+| Адрес | https://bagdar.academy (+ `www`) | https://dev.bagdar.academy |
+| Ветка | `main` | `develop` |
+| Клон и venv | `/home/nur/apps/backend-bagdar.academy` | `/home/nur/apps/bagdar-dev` |
+| gunicorn | `127.0.0.1:8000`, 2 воркера | `127.0.0.1:8001`, 1 воркер |
+| systemd | `bagdar-backend`, `bagdar-worker`, `bagdar-beat` | `bagdar-dev-backend`, `bagdar-dev-worker`, `bagdar-dev-beat` |
+| PostgreSQL | база и роль `bagdar` | база и роль `bagdar_dev` |
+| Redis | базы 0–2 | базы 3–5 |
+| Фронтенд и статика | `/var/www/bagdar.academy/` | `/var/www/dev.bagdar.academy/` |
+| Загруженные файлы | `/var/lib/bagdar/media` | `/var/lib/bagdar-dev/media` |
 
 ```text
-nginx :80/:443 ─┬─ /            → /var/www/bagdar.academy/frontend   (собранный Vue)
-                ├─ /static/     → /var/www/bagdar.academy/static     (collectstatic)
-                └─ /api /admin /docs /health /sitemap.xml … → gunicorn 127.0.0.1:8000  (bagdar-backend)
-Celery: bagdar-worker + bagdar-beat → Redis 127.0.0.1:6379
-PostgreSQL 127.0.0.1:5432, база bagdar, роль bagdar
+nginx :80/:443 ─┬─ /            → /var/www/<домен>/frontend   (собранный Vue)
+                ├─ /static/     → /var/www/<домен>/static     (collectstatic)
+                └─ /api /admin /docs /health /sitemap.xml … → gunicorn (bagdar[-dev]-backend)
+Celery: bagdar[-dev]-worker + bagdar[-dev]-beat → Redis 127.0.0.1:6379
 ```
 
-| Что | Где |
-|---|---|
-| Клон репозитория | `/home/nur/apps/backend-bagdar.academy` (ветка `main`) |
-| Python venv | `/home/nur/apps/backend-bagdar.academy/venv` |
-| Секреты (`.env`) | `/home/nur/apps/backend-bagdar.academy/edu_platform/.env`, шаблон — [env.prod.example](env.prod.example) |
-| Загруженные файлы | `/var/lib/bagdar/media` |
-| Юниты systemd | [systemd/](systemd/) → `/etc/systemd/system/` |
-| nginx | [nginx/](nginx/) → `/etc/nginx/sites-available/bagdar.academy` + `snippets/bagdar-locations.conf` |
+Секреты окружения — `<клон>/edu_platform/.env` (chmod 600, шаблон — [env.prod.example](env.prod.example)).
+Юниты systemd и nginx-snippet собираются из шаблонов [systemd/*.in](systemd/) и [nginx/locations.conf.in](nginx/locations.conf.in).
 
-## Первая настройка (один раз)
+## Автодеплой (GitHub Actions)
 
-На чистом сервере от root:
+[`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml): после зелёного CI на push в `main` обновляется
+bagdar.academy, в `develop` — dev.bagdar.academy. Вручную: Actions → Deploy → Run workflow.
+
+Workflow заходит на сервер ключом из секрета `DEPLOY_SSH_KEY`. В `authorized_keys` этот ключ привязан к
+[ci-deploy.sh](ci-deploy.sh), поэтому им можно только запустить деплой `prod` или `dev`. Ключ создаётся один раз:
+
+```bash
+bash /home/nur/apps/backend-bagdar.academy/edu_platform/deploy/setup.sh ci-key
+```
+
+Скрипт печатает приватный ключ. Добавьте его в GitHub: **Settings → Secrets and variables → Actions →
+New repository secret**, Name `DEPLOY_SSH_KEY`.
+
+## Первая настройка (один раз, от root)
+
+На чистом сервере:
 
 ```bash
 id nur || useradd --create-home --shell /bin/bash nur
-sudo -u nur git clone https://github.com/nurdauletduisenbai-dotcom/backend-bagdar.academy.git /home/nur/apps/backend-bagdar.academy
-bash /home/nur/apps/backend-bagdar.academy/edu_platform/deploy/setup.sh
+sudo -u nur git clone https://github.com/nurdauletduisenbai-dotcom/bagdar.academy.git /home/nur/apps/backend-bagdar.academy
+bash /home/nur/apps/backend-bagdar.academy/edu_platform/deploy/setup.sh          # prod
+bash /home/nur/apps/backend-bagdar.academy/edu_platform/deploy/setup.sh ssl      # HTTPS для prod
 ```
 
-Скрипт ставит nginx, PostgreSQL, Redis, Node.js 22 и certbot (и swap, если RAM меньше 2 ГБ), создаёт роль и базу PostgreSQL, генерирует `.env` с секретами,
-ставит юниты systemd и сайт nginx, затем делает первый деплой. Повторный запуск безопасен.
+Скрипт ставит nginx, PostgreSQL, Redis, Node.js 22 и certbot (и swap, если RAM меньше 2 ГБ), создаёт роль и базу,
+генерирует `.env` с секретами, ставит юниты systemd и сайт nginx, затем делает первый деплой. Повторный запуск безопасен.
 
-Затем HTTPS — когда A-записи `bagdar.academy` и `www` указывают на сервер:
+Dev — когда A-запись `dev.bagdar.academy` указывает на сервер:
 
 ```bash
-sudo bash edu_platform/deploy/setup.sh ssl
+bash /home/nur/apps/backend-bagdar.academy/edu_platform/deploy/setup.sh dev      # клон develop, база, .env, сервисы
+bash /home/nur/apps/backend-bagdar.academy/edu_platform/deploy/setup.sh dev ssl  # HTTPS для dev
 ```
 
-## Обновление (после релиза в `main`)
+## Обновление вручную
 
 ```bash
-bash ~/apps/backend-bagdar.academy/edu_platform/deploy/deploy.sh
+sudo -u nur -H bash /home/nur/apps/backend-bagdar.academy/edu_platform/deploy/deploy.sh       # prod
+sudo -u nur -H bash /home/nur/apps/backend-bagdar.academy/edu_platform/deploy/deploy.sh dev   # dev
 ```
 
 `git pull` → зависимости → сборка фронтенда → миграции → `collectstatic` → перезапуск сервисов → проверка `/ready/`.
+Деплои идут по очереди (`flock`): две сборки фронтенда одновременно в 1 ГБ RAM не помещаются.
 
 ## Диагностика
 
 ```bash
-systemctl status bagdar-backend bagdar-worker bagdar-beat
+systemctl status bagdar-backend bagdar-worker bagdar-beat          # dev: bagdar-dev-*
 journalctl -u bagdar-backend -f
-sudo nginx -t && sudo tail -f /var/log/nginx/error.log
+nginx -t && tail -f /var/log/nginx/error.log
 ```
