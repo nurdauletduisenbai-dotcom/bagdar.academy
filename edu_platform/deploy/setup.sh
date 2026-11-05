@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Первичная настройка сервера bagdar.academy (Debian 13, nginx + PostgreSQL уже стоят).
+# Первичная настройка сервера bagdar.academy (Ubuntu 24.04 / Debian 12+, можно на чистом сервере).
 # Запускать с sudo из клона репозитория:
 #   sudo bash ~/apps/backend-bagdar.academy/edu_platform/deploy/setup.sh        # пакеты, БД, .env, systemd, nginx, первый деплой
 #   sudo bash ~/apps/backend-bagdar.academy/edu_platform/deploy/setup.sh ssl    # HTTPS-сертификат (когда домен смотрит на сервер)
@@ -41,10 +41,34 @@ if [ "${1:-}" = ssl ]; then
     exit 0
 fi
 
-step "Пакеты: Redis, Node.js, certbot, сборка Python"
+step "Пользователь $APP_USER"
+id "$APP_USER" >/dev/null 2>&1 || useradd --create-home --shell /bin/bash "$APP_USER"
+
+# npm ci + vue-tsc не помещаются в 1 ГБ RAM — на маленьких VPS добавляем swap
+if [ "$(awk '/MemTotal/{print $2}' /proc/meminfo)" -lt 2000000 ] && [ "$(swapon --noheadings | wc -l)" = 0 ]; then
+    step "Swap 2 ГБ (RAM меньше 2 ГБ)"
+    fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+    grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+
+step "Пакеты: nginx, PostgreSQL, Redis, certbot, сборка Python"
+export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
-apt-get install -y -q redis-server nodejs npm python3-venv python3-dev libpq-dev rsync curl certbot
-systemctl enable --now redis-server
+apt-get install -y -q nginx postgresql redis-server python3-venv python3-dev libpq-dev \
+    rsync curl ca-certificates gnupg openssl certbot
+systemctl enable --now nginx postgresql redis-server
+
+# Vite 8 требует Node.js >= 20.19; в Ubuntu 24.04 из коробки 18 — ставим 22 LTS из репозитория NodeSource
+if [ "$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)" -lt 20 ]; then
+    step "Node.js 22 (NodeSource)"
+    install -d -m 755 /etc/apt/keyrings
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor --yes -o /etc/apt/keyrings/nodesource.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" \
+        > /etc/apt/sources.list.d/nodesource.list
+    apt-get update -q
+    apt-get install -y -q nodejs
+fi
+node --version
 
 step "Каталоги"
 install -d -o "$APP_USER" -g "$APP_USER" "$WEB_ROOT" "$WEB_ROOT/frontend" "$WEB_ROOT/static" /var/lib/bagdar /var/lib/bagdar/media
@@ -100,6 +124,6 @@ step "Первый деплой ветки $BRANCH"
 sudo -u "$APP_USER" -H bash "$DEPLOY_DIR/deploy.sh" "$BRANCH"
 
 echo
-echo "✓ Сайт работает по http://$DOMAIN (и http://10.42.0.23 в локальной сети)."
-echo "  Когда домен будет смотреть на внешний IP и порты 80/443 проброшены — выполните:"
+echo "✓ Сайт работает по http://$DOMAIN"
+echo "  HTTPS (когда DNS домена указывает на этот сервер):"
 echo "  sudo bash $DEPLOY_DIR/setup.sh ssl"
