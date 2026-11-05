@@ -14,16 +14,23 @@ export PIP_DEFAULT_TIMEOUT=30
 
 step() { printf '\n\033[1;34m→ [%s] %s\033[0m\n' "$ENV_NAME" "$*"; }
 
-# Один деплой за раз: на 1 ГБ RAM две параллельные сборки фронтенда не помещаются
-exec 9>/tmp/bagdar-deploy.lock
-flock 9
+if [ -z "${BAGDAR_DEPLOY_PULLED:-}" ]; then
+    # Один деплой за раз: на 1 ГБ RAM две параллельные сборки фронтенда не помещаются
+    exec 9>/tmp/bagdar-deploy.lock
+    flock 9
 
-step "Код: $BRANCH"
+    step "Код: $BRANCH"
+    cd "$REPO_DIR"
+    git fetch origin
+    git checkout "$BRANCH"
+    git pull --ff-only origin "$BRANCH"
+    git log --oneline -1
+
+    # Остальные шаги — из только что обновлённой ветки окружения: в develop они могут быть новее,
+    # чем в скрипте, который запустили (CI всегда вызывает deploy.sh из prod-клона). Блокировка (fd 9) наследуется.
+    BAGDAR_DEPLOY_PULLED=1 exec bash "$REPO_DIR/edu_platform/deploy/deploy.sh" "$ENV_NAME"
+fi
 cd "$REPO_DIR"
-git fetch origin
-git checkout "$BRANCH"
-git pull --ff-only origin "$BRANCH"
-git log --oneline -1
 
 step "Python-зависимости"
 [ -x "$VENV/bin/python" ] || python3 -m venv "$VENV"
