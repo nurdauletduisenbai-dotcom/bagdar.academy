@@ -7,11 +7,11 @@ const emit = defineEmits<{ change: [page: number] }>()
 
 <template>
   <nav v-if="props.totalPages > 1" class="pager">
-    <button class="icon-btn" :disabled="page <= 1" aria-label="Назад" @click="emit('change', page - 1)">
+    <button class="icon-btn" :disabled="page <= 1" :aria-label="$t('ui.prev')" @click="emit('change', page - 1)">
       <AppIcon name="chevron-left" />
     </button>
-    <span class="muted small">{{ page }} из {{ totalPages }}</span>
-    <button class="icon-btn" :disabled="page >= totalPages" aria-label="Вперёд" @click="emit('change', page + 1)">
+    <span class="muted small">{{ $t('ui.pageOf', { page, total: totalPages }) }}</span>
+    <button class="icon-btn" :disabled="page >= totalPages" :aria-label="$t('ui.next')" @click="emit('change', page + 1)">
       <AppIcon name="chevron-right" />
     </button>
   </nav>

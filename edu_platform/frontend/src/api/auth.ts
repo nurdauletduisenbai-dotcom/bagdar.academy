@@ -1,7 +1,9 @@
 import type {
   AuthSession,
+  InvitePreview,
   LoginResponse,
   Message,
+  NewSchoolPayload,
   ParentRelation,
   TwoFactorSetup,
   UserProfile,
@@ -22,6 +24,8 @@ export interface RegisterPayload {
   last_name: string
   role?: 'student' | 'parent'
   org_slug?: string
+  school_id?: number | null
+  new_school?: NewSchoolPayload | null
   is_minor?: boolean
   parent_consent?: boolean
 }
@@ -31,12 +35,17 @@ const data = <T>(p: Promise<{ data: T }>) => p.then((r) => r.data)
 export const authApi = {
   login: (payload: LoginPayload) => data(http.post<LoginResponse>('/auth/login/', payload)),
   register: (payload: RegisterPayload) => data(http.post<Message>('/auth/register/', payload)),
+  /** Что за приглашение по ссылке из письма: кому, куда, действует ли ещё */
+  previewInvite: (token: string) => data(http.get<InvitePreview>('/auth/invites/preview/', { params: { token } })),
   registerByInvite: (payload: { invite_token: string; email: string; password: string; first_name: string; last_name: string }) =>
     data(http.post<Message>('/auth/register-by-invite/', payload)),
   logout: () => http.post('/auth/logout/', {}),
   logoutAll: () => http.post('/auth/logout-all/', {}),
   me: () => data(http.get<UserProfile>('/auth/users/me/')),
   updateMe: (payload: Partial<UserProfile>) => data(http.patch<UserProfile>('/auth/users/me/', payload)),
+  /** Сменить свою школу: из справочника (school_id) или свою (new_school, уходит на проверку) */
+  setSchool: (payload: { school_id?: number | null; new_school?: NewSchoolPayload | null }) =>
+    data(http.put<UserProfile>('/auth/users/me/school/', payload)),
   changePassword: (old_password: string, new_password: string) =>
     data(http.post<Message>('/auth/change-password/', { old_password, new_password })),
   verifyEmail: (token: string) => data(http.get<Message>('/auth/verify-email/', { params: { token } })),

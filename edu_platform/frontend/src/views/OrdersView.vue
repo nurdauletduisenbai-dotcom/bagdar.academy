@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { paymentsApi } from '@/api/payments'
 import AppPager from '@/components/ui/AppPager.vue'
@@ -10,11 +11,15 @@ import type { Order } from '@/types/api'
 import { fmtDate, fmtMoney, orderStatusLabels } from '@/utils/format'
 
 const props = defineProps<{ admin?: boolean }>()
+
+const { t } = useI18n()
+
 const { act, busy } = useAction()
 const status = ref(props.admin ? 'pending' : '')
 const page = ref(1)
 const list = useAsync(() => paymentsApi.list({ status: status.value || undefined, page: page.value }))
-const providerLabel: Record<string, string> = { manual: 'наличные/перевод', stripe: 'карта', kaspi: 'Kaspi' }
+const providerLabel = (name: string) =>
+  ({ manual: t('orders.provider.manual'), stripe: t('orders.provider.stripe'), kaspi: 'Kaspi' } as Record<string, string>)[name] ?? name
 const badge: Record<Order['status'], string> = { paid: 'badge--success', pending: 'badge--warning', refunded: '', failed: '' }
 
 function setStatus(s: string) {
@@ -24,32 +29,32 @@ function setStatus(s: string) {
 }
 
 async function markPaid(o: Order) {
-  if (await act(() => paymentsApi.markPaid(o.id), 'Оплата подтверждена — ученик зачислен на курс')) list.run()
+  if (await act(() => paymentsApi.markPaid(o.id), t('orders.markedPaid'))) list.run()
 }
 
 async function refund(o: Order) {
-  if (!confirm('Вернуть деньги и закрыть доступ к курсу?')) return
-  if (await act(() => paymentsApi.refund(o.id), 'Возврат оформлен')) list.run()
+  if (!confirm(t('orders.confirmRefund'))) return
+  if (await act(() => paymentsApi.refund(o.id), t('orders.refunded'))) list.run()
 }
 
 async function cancel(o: Order) {
-  if (await act(() => paymentsApi.cancel(o.id), 'Заказ отменён')) list.run()
+  if (await act(() => paymentsApi.cancel(o.id), t('orders.canceled'))) list.run()
 }
 </script>
 
 <template>
-  <PageHeader :title="admin ? 'Заказы и оплаты' : 'Мои заказы'"
-              :subtitle="admin ? '«Оплачено» = подтверждение оплаты → ученик автоматически зачисляется на курс.' : undefined" />
+  <PageHeader :title="admin ? $t('orders.adminTitle') : $t('titles.myOrders')"
+              :subtitle="admin ? $t('orders.adminSubtitle') : undefined" />
 
   <div class="pills" style="margin-bottom: var(--space-lg)">
-    <button v-if="admin" class="pill" :class="{ active: status === 'pending' }" @click="setStatus('pending')">Ждут</button>
-    <button class="pill" :class="{ active: status === '' }" @click="setStatus('')">Все</button>
-    <button class="pill" :class="{ active: status === 'paid' }" @click="setStatus('paid')">Оплачены</button>
-    <button class="pill" :class="{ active: status === 'refunded' }" @click="setStatus('refunded')">Возвраты</button>
+    <button v-if="admin" class="pill" :class="{ active: status === 'pending' }" @click="setStatus('pending')">{{ $t('orders.fPending') }}</button>
+    <button class="pill" :class="{ active: status === '' }" @click="setStatus('')">{{ $t('ui.all') }}</button>
+    <button class="pill" :class="{ active: status === 'paid' }" @click="setStatus('paid')">{{ $t('orders.fPaid') }}</button>
+    <button class="pill" :class="{ active: status === 'refunded' }" @click="setStatus('refunded')">{{ $t('orders.fRefunded') }}</button>
   </div>
 
   <StateBlock :loading="list.loading.value" :error="list.error.value" :empty="!list.data.value?.results.length"
-              empty-text="Заказов нет" @retry="list.run">
+              :empty-text="$t('orders.empty')" @retry="list.run">
     <div class="stack">
       <article v-for="o in list.data.value?.results ?? []" :key="o.id" class="card order" :class="{ 'card--warning': o.status === 'pending' }">
         <div class="order__info">
@@ -58,16 +63,16 @@ async function cancel(o: Order) {
             <RouterLink :to="`/courses/${o.course}`">{{ o.course_title }}</RouterLink>
           </strong>
           <span class="muted small">
-            {{ providerLabel[o.provider] ?? o.provider }} · {{ fmtDate(o.paid_at ?? o.created_at) }}
-            <template v-if="!admin && o.status === 'pending' && o.provider === 'manual'"> · ждёт подтверждения администратором</template>
+            {{ providerLabel(o.provider) }} · {{ fmtDate(o.paid_at ?? o.created_at) }}
+            <template v-if="!admin && o.status === 'pending' && o.provider === 'manual'">{{ $t('orders.awaitAdmin') }}</template>
           </span>
         </div>
         <span class="order__amount">{{ fmtMoney(o.amount, o.currency) }}</span>
         <div class="row">
-          <a v-if="o.status === 'pending' && o.checkout_url" :href="o.checkout_url" class="btn btn--sm">Оплатить</a>
-          <button v-if="admin && o.status === 'pending'" class="btn btn--sm" :disabled="busy" @click="markPaid(o)">Оплачено</button>
-          <button v-if="admin && o.status === 'paid'" class="btn btn--ghost btn--sm" :disabled="busy" @click="refund(o)">Возврат</button>
-          <button v-if="o.status === 'pending'" class="btn btn--text btn--sm" :disabled="busy" @click="cancel(o)">Отменить</button>
+          <a v-if="o.status === 'pending' && o.checkout_url" :href="o.checkout_url" class="btn btn--sm">{{ $t('orders.pay') }}</a>
+          <button v-if="admin && o.status === 'pending'" class="btn btn--sm" :disabled="busy" @click="markPaid(o)">{{ $t('orders.markPaid') }}</button>
+          <button v-if="admin && o.status === 'paid'" class="btn btn--ghost btn--sm" :disabled="busy" @click="refund(o)">{{ $t('orders.refund') }}</button>
+          <button v-if="o.status === 'pending'" class="btn btn--text btn--sm" :disabled="busy" @click="cancel(o)">{{ $t('orders.cancel') }}</button>
           <span v-if="!(admin && o.status === 'pending')" class="badge" :class="badge[o.status]">{{ orderStatusLabels[o.status] }}</span>
         </div>
       </article>

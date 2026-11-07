@@ -1,4 +1,4 @@
-import type { AuditLog, Invite, Member, Organization, OrganizationBrief, Paginated, Role } from '@/types/api'
+import type { AuditLog, Invite, Member, MemberLookup, Organization, OrganizationBrief, Paginated, Role } from '@/types/api'
 
 import { http } from './http'
 
@@ -10,6 +10,8 @@ export const orgsApi = {
   updateCurrent: (payload: Partial<Organization>) => data(http.patch<Organization>('/orgs/current/', payload)),
   members: (params: Record<string, unknown> = {}) => data(http.get<Paginated<Member>>('/orgs/members/', { params })),
   addMember: (email: string, role: Role) => data(http.post<Member>('/orgs/members/', { email, role })),
+  /** Поиск пользователя для добавления: суперпользователь — по части email/имени, админ — по точному email */
+  lookupUser: (q: string) => data(http.get<MemberLookup[]>('/orgs/members/lookup/', { params: { q } })),
   updateMember: (id: number, payload: Partial<Pick<Member, 'role' | 'is_active'>>) =>
     data(http.patch<Member>(`/orgs/members/${id}/`, payload)),
   deactivateMember: (id: number) => http.delete(`/orgs/members/${id}/`),

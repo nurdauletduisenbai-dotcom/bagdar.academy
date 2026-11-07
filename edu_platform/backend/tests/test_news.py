@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 from unittest import mock
 from urllib.parse import quote
@@ -108,3 +109,93 @@ class TestContactRequest:
             assert api.post(self.URL, payload).status_code == 201
             assert api.post(self.URL, payload).status_code == 429
         cache.clear()
+
+
+@pytest.mark.django_db
+class TestContactRequestNotify:
+    URL = '/api/v1/news/contact/'
+    PAYLOAD = {'name': 'Айгерим', 'phone': '+77011234567', 'audience': 'parent',
+               'message': 'Есть ли курсы?', 'language': 'kk', 'consent': True}
+
+    @pytest.fixture
+    def leads(self, settings):
+        settings.LEADS_TELEGRAM_BOT_TOKEN = '123:test'
+        settings.LEADS_TELEGRAM_CHAT_ID = '-100500'
+        settings.LEADS_NOTIFY_EMAILS = ['team@bagdar.academy', 'sales@bagdar.academy']
+        return settings
+
+    def _post(self, api, django_capture_on_commit_callbacks):
+        with django_capture_on_commit_callbacks(execute=True):
+            return api.post(self.URL, self.PAYLOAD)
+
+    def test_sends_telegram_and_email(self, api, leads, mailoutbox, django_capture_on_commit_callbacks):
+        response = mock.MagicMock(status=200)
+        with mock.patch('apps.news.tasks.urllib.request.urlopen') as urlopen:
+            urlopen.return_value.__enter__.return_value = response
+            res = self._post(api, django_capture_on_commit_callbacks)
+
+        assert res.status_code == 201
+        request = urlopen.call_args.args[0]
+        assert request.full_url == 'https://api.telegram.org/bot123:test/sendMessage'
+        body = json.loads(request.data)
+        assert body['chat_id'] == '-100500'
+        assert 'Айгерим' in body['text'] and '+77011234567' in body['text'] and 'Родитель' in body['text']
+        assert len(mailoutbox) == 1
+        assert mailoutbox[0].to == ['team@bagdar.academy', 'sales@bagdar.academy']
+        assert 'Есть ли курсы?' in mailoutbox[0].body
+
+    def test_nothing_configured_does_nothing(self, api, settings, mailoutbox, django_capture_on_commit_callbacks):
+        settings.LEADS_TELEGRAM_BOT_TOKEN = ''
+        settings.LEADS_TELEGRAM_CHAT_ID = ''
+        settings.LEADS_NOTIFY_EMAILS = []
+        with mock.patch('apps.news.tasks.urllib.request.urlopen') as urlopen, \
+                mock.patch('apps.news.tasks.notify_new_contact_request.delay') as delay:
+            res = self._post(api, django_capture_on_commit_callbacks)
+        assert res.status_code == 201
+        delay.assert_not_called()
+        urlopen.assert_not_called()
+        assert mailoutbox == []
+
+    def test_telegram_failure_still_sends_email(self, api, leads, mailoutbox, django_capture_on_commit_callbacks):
+        with mock.patch('apps.news.tasks.urllib.request.urlopen', side_effect=OSError('network down')):
+            res = self._post(api, django_capture_on_commit_callbacks)
+        assert res.status_code == 201
+        assert len(mailoutbox) == 1
+
+    def test_all_channels_failing_never_breaks_form(self, api, leads, django_capture_on_commit_callbacks):
+        from apps.news.models import ContactRequest
+
+        with mock.patch('apps.news.tasks.urllib.request.urlopen', side_effect=OSError('network down')), \
+                mock.patch('apps.news.tasks.send_mail', side_effect=OSError('smtp down')):
+            res = self._post(api, django_capture_on_commit_callbacks)
+        assert res.status_code == 201
+        assert ContactRequest.objects.count() == 1
+
+    def test_broker_down_never_breaks_form(self, api, leads, django_capture_on_commit_callbacks):
+        with mock.patch('apps.news.tasks.notify_new_contact_request.delay', side_effect=ConnectionError('redis')):
+            res = self._post(api, django_capture_on_commit_callbacks)
+        assert res.status_code == 201
+
+
+@pytest.mark.django_db
+class TestSitemap:
+    def test_lists_public_pages_and_only_published_posts(self, api, settings):
+        settings.FRONTEND_URL = 'https://bagdar.academy'
+        Post.objects.create(title='Жаңа оқу жылы', body='x', is_published=True)
+        Post.objects.create(title='Черновик', body='x', is_published=False)
+        Post.objects.create(title='Отложено', body='x', is_published=True,
+                            published_at=timezone.now() + timedelta(days=1))
+
+        res = api.get('/sitemap.xml')
+        assert res.status_code == 200
+        assert res['Content-Type'].startswith('application/xml')
+        xml = res.content.decode()
+        assert '<loc>https://bagdar.academy/</loc>' in xml
+        assert '<loc>https://bagdar.academy/news</loc>' in xml
+        assert f'<loc>https://bagdar.academy/news/{quote("жаңа-оқу-жылы")}</loc>' in xml
+        assert xml.count('<url>') == 3
+
+    def test_empty_site_still_valid(self, api):
+        res = api.get('/sitemap.xml')
+        assert res.status_code == 200
+        assert res.content.decode().count('<url>') == 2

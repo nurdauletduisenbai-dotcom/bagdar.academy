@@ -25,16 +25,16 @@ async function onSubmit() {
 </script>
 
 <template>
-  <AuthCard title="Новый пароль">
-    <div v-if="!token" class="alert alert--error">В ссылке нет токена. Запросите сброс ещё раз.</div>
+  <AuthCard :title="$t('titles.resetPassword')">
+    <div v-if="!token" class="alert alert--error">{{ $t('reset.noToken') }}</div>
     <div v-else-if="done" class="stack">
-      <div class="alert alert--success">Пароль изменён.</div>
-      <RouterLink to="/login" class="btn">Войти</RouterLink>
+      <div class="alert alert--success">{{ $t('reset.changed') }}</div>
+      <RouterLink to="/login" class="btn">{{ $t('auth.submit') }}</RouterLink>
     </div>
     <form v-else class="form" @submit.prevent="onSubmit">
-      <label>Новый пароль (от 10 символов) <input v-model="password" type="password" minlength="10" required /></label>
+      <label>{{ $t('reset.newPassword') }} <input v-model="password" type="password" minlength="10" required /></label>
       <p v-if="error" class="alert alert--error">{{ error }}</p>
-      <button class="btn btn--lg btn--block">Сохранить</button>
+      <button class="btn btn--lg btn--block">{{ $t('common.save') }}</button>
     </form>
   </AuthCard>
 </template>

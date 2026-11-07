@@ -35,6 +35,8 @@ export interface AuthUser {
   email: string
   full_name: string
   is_verified: boolean
+  /** Суперпользователь платформы: видит раздел «Заявки школ» */
+  is_superuser: boolean
   org_id: ID | null
   roles: Role[]
   organizations: OrganizationBrief[]
@@ -70,6 +72,18 @@ export interface UserProfile {
   avatar_url: string | null
   is_verified: boolean
   is_minor: boolean
+  is_superuser: boolean
+  /** Школа из справочника; is_approved=false — добавлена учеником и ждёт проверки */
+  school: {
+    id: ID
+    name: string
+    name_kk: string
+    name_ru: string
+    locality: string
+    is_approved: boolean
+    /** Организация школы на платформе — ученик учится именно в ней */
+    organization: ID | null
+  } | null
   roles: Role[]
   created_at: string
 }
@@ -112,6 +126,16 @@ export interface Organization {
   timezone: string
   is_active: boolean
   created_at: string
+}
+
+/** Найденный пользователь в форме «Добавить существующего» (/orgs/members/lookup/) */
+export interface MemberLookup {
+  id: ID
+  email: string
+  full_name: string
+  /** Активные роли в текущей организации — пусто, если ещё не участник */
+  roles: Role[]
+  school: string
 }
 
 export interface Member {
@@ -631,4 +655,121 @@ export interface PlatformStats {
   students: number
   teachers: number
   schools: number
+}
+
+// ---------- Справочник школ Казахстана (публично, для регистрации) ----------
+export type SchoolKind = 'school' | 'gymnasium' | 'lyceum' | 'specialized' | 'college' | 'center' | 'extra' | 'club' | 'other'
+
+export interface KzRegion {
+  id: ID
+  code: string
+  name_ru: string
+  name_kk: string
+  is_city: boolean
+}
+
+export interface DirectorySchool {
+  id: ID
+  name: string
+  name_kk: string
+  name_ru: string
+  kind: SchoolKind
+  region: ID
+  region_name_ru: string
+  region_name_kk: string
+  locality: string
+  /** Школа уже работает на платформе — ученик попадёт в её организацию */
+  on_platform: boolean
+}
+
+/** «Моей школы нет в списке»: своя школа, кружок или учебный центр (уходит на проверку) */
+export interface NewSchoolPayload {
+  name: string
+  kind: SchoolKind
+  region: ID
+  locality: string
+}
+
+/** Заявка на подключение школы (POST /schools/applications/) — рассматривает суперпользователь */
+export interface SchoolApplicationPayload {
+  school_id: ID | null
+  new_school: NewSchoolPayload | null
+  org_type: 'school' | 'center' | 'club'
+  contact_name: string
+  position: string
+  email: string
+  phone: string
+  students_count: number | null
+  bin: string
+  message: string
+  language: string
+  consent: boolean
+}
+
+// ---------- Заявки школ: рассмотрение суперпользователем на сайте ----------
+export type ApplicationStatus = 'new' | 'needs_info' | 'approved' | 'rejected'
+
+export interface ManagedApplication {
+  id: ID
+  status: ApplicationStatus
+  school: {
+    id: ID
+    name: string
+    name_kk: string
+    name_ru: string
+    kind: SchoolKind
+    region: ID
+    region_name_ru: string
+    region_name_kk: string
+    locality: string
+    is_approved: boolean
+    is_active: boolean
+    source: 'osm' | 'import' | 'admin' | 'user'
+    organization: ID | null
+    /** Email действующих администраторов организации школы */
+    admins: string[]
+  }
+  org_type: SchoolApplicationPayload['org_type']
+  contact_name: string
+  position: string
+  email: string
+  phone: string
+  students_count: number | null
+  bin: string
+  message: string
+  language: string
+  is_claim: boolean
+  review_note: string
+  reviewed_by_email: string
+  reviewed_at: string | null
+  created_at: string
+  /** Только в ответе на «Одобрить» */
+  result?: { invited: boolean; org_id: ID; org_name: string }
+}
+
+export interface ManagedApplicationPatch {
+  school_id?: ID
+  school_edit?: Partial<Pick<ManagedApplication['school'], 'name' | 'name_kk' | 'name_ru' | 'kind' | 'region' | 'locality'>>
+  org_type?: SchoolApplicationPayload['org_type']
+  contact_name?: string
+  position?: string
+  email?: string
+  phone?: string
+  students_count?: number | null
+  bin?: string
+  message?: string
+  review_note?: string
+}
+
+/** GET /auth/invites/preview/ — данные для формы по ссылке из письма */
+export interface InvitePreview {
+  status: 'valid' | 'used' | 'expired' | 'not_found'
+  org_name?: string
+  role?: Role
+  email?: string
+  /** Персональное приглашение: email — логин, его не меняют */
+  email_locked?: boolean
+  first_name?: string
+  last_name?: string
+  expires_at?: string
 }

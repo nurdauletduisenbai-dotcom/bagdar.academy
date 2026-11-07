@@ -1,6 +1,6 @@
 <template>
   <section class="card">
-    <h1>Страница не найдена</h1>
-    <RouterLink to="/">На главную</RouterLink>
+    <h1>{{ $t('titles.notFound') }}</h1>
+    <RouterLink to="/">{{ $t('notFound.toHome') }}</RouterLink>
   </section>
 </template>

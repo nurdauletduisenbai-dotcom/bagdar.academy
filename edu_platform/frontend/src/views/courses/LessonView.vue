@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { lessonsApi, videosApi } from '@/api/content'
 import { downloadFile, errorMessage } from '@/api/http'
@@ -14,6 +15,9 @@ import type { Material, VideoPlayer } from '@/types/api'
 import { fmtBytes, fmtDateTime, fmtDuration, testModeLabels } from '@/utils/format'
 
 const props = defineProps<{ id: string }>()
+
+const { t } = useI18n()
+
 const auth = useAuthStore()
 const toast = useToast()
 const { act, busy } = useAction()
@@ -39,7 +43,7 @@ const progress = useYouTubeProgress((videoId, completed) => {
   const v = lesson.data.value?.videos.find((x) => x.id === videoId)
   if (v && completed && !v.is_completed) {
     v.is_completed = true
-    toast.success('Видео просмотрено')
+    toast.success(t('lessonView.videoWatched'))
     lesson.run()
   }
 })
@@ -57,7 +61,7 @@ async function play(videoId: number) {
 }
 
 async function complete() {
-  await act(() => lessonsApi.complete(Number(props.id)), 'Урок отмечен пройденным')
+  await act(() => lessonsApi.complete(Number(props.id)), t('lessonView.completed'))
   lesson.run()
 }
 
@@ -72,7 +76,7 @@ async function download(m: Material) {
       <!-- Кинотеатр -->
       <section class="band page-band cinema">
         <RouterLink :to="`/courses/${lesson.data.value.course_id}`" class="back small muted">
-          <AppIcon name="arrow-left" :size="14" /> К курсу
+          <AppIcon name="arrow-left" :size="14" /> {{ $t('lessonView.toCourse') }}
         </RouterLink>
         <div v-if="lesson.data.value.videos.length" class="cinema__grid">
           <div class="video">
@@ -80,68 +84,68 @@ async function download(m: Material) {
                     allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen />
             <div v-else class="video__empty">
               <AppIcon name="play" :size="32" />
-              <span>{{ playerError || 'Загружаем видео…' }}</span>
+              <span>{{ playerError || $t('lessonView.loadingVideo') }}</span>
             </div>
           </div>
           <div class="parts">
-            <div class="eyebrow">Видео урока</div>
+            <div class="eyebrow">{{ $t('lessonView.videoTitle') }}</div>
             <button v-for="(v, i) in lesson.data.value.videos" :key="v.id" class="part"
                     :class="{ active: player?.video_id === v.id }" @click="play(v.id)">
               <AppIcon :name="v.is_completed ? 'check' : 'play'" :size="14" />
-              <span class="part__title">Часть {{ i + 1 }} · {{ v.title }}</span>
+              <span class="part__title">{{ $t('lessonView.part', { n: i + 1 }) }} · {{ v.title }}</span>
               <span class="part__time">{{ fmtDuration(v.duration_seconds) }}</span>
             </button>
-            <span class="muted small">Видео засчитывается после просмотра 90%</span>
+            <span class="muted small">{{ $t('lessonView.videoRule') }}</span>
           </div>
         </div>
-        <p v-else class="muted">В этом уроке нет видео — материалы и задания ниже.</p>
+        <p v-else class="muted">{{ $t('lessonView.noVideo') }}</p>
       </section>
 
       <div class="title-row">
         <h1>{{ lesson.data.value.title }}</h1>
         <div class="row">
-          <RouterLink v-if="auth.isTeacher" :to="`/teach/lessons/${id}`" class="btn btn--ghost">Редактировать</RouterLink>
-          <span v-if="lesson.data.value.is_completed" class="btn btn--ghost done"><AppIcon name="check" :size="16" /> Пройден</span>
+          <RouterLink v-if="auth.isTeacher" :to="`/teach/lessons/${id}`" class="btn btn--ghost">{{ $t('ui.edit') }}</RouterLink>
+          <span v-if="lesson.data.value.is_completed" class="btn btn--ghost done"><AppIcon name="check" :size="16" /> {{ $t('lessonView.done') }}</span>
           <button v-else-if="lesson.data.value.has_access && auth.isStudent" class="btn" :disabled="busy" @click="complete">
-            Отметить пройденным
+            {{ $t('lessonView.markDone') }}
           </button>
         </div>
       </div>
 
       <div v-if="!lesson.data.value.has_access" class="alert alert--warning" style="margin-bottom: var(--space-lg)">
-        Это бесплатный урок. Материалы, задания и остальные уроки откроются после записи на курс.
-        <RouterLink :to="`/courses/${lesson.data.value.course_id}`" class="btn btn--sm">Записаться</RouterLink>
+        {{ $t('lessonView.previewNote') }}
+        <RouterLink :to="`/courses/${lesson.data.value.course_id}`" class="btn btn--sm">{{ $t('lessonView.enroll') }}</RouterLink>
       </div>
 
       <template v-else>
         <div class="tabs">
-          <button :class="{ active: tab === 'materials' }" @click="tab = 'materials'">Материалы {{ counts.materials }}</button>
-          <button :class="{ active: tab === 'assignments' }" @click="tab = 'assignments'">ДЗ {{ counts.assignments }}</button>
-          <button :class="{ active: tab === 'tests' }" @click="tab = 'tests'">Тест {{ counts.tests }}</button>
-          <button :class="{ active: tab === 'discussion' }" @click="tab = 'discussion'">Обсуждение</button>
+          <button :class="{ active: tab === 'materials' }" @click="tab = 'materials'">{{ $t('lessonView.tabMaterials') }} {{ counts.materials }}</button>
+          <button :class="{ active: tab === 'assignments' }" @click="tab = 'assignments'">{{ $t('lessonView.tabHw') }} {{ counts.assignments }}</button>
+          <button :class="{ active: tab === 'tests' }" @click="tab = 'tests'">{{ $t('lessonView.tabTest') }} {{ counts.tests }}</button>
+          <button :class="{ active: tab === 'discussion' }" @click="tab = 'discussion'">{{ $t('lessonView.tabDiscussion') }}</button>
         </div>
 
         <div v-if="tab === 'materials'" class="stack">
-          <p v-if="!counts.materials" class="muted">Материалов нет.</p>
+          <p v-if="!counts.materials" class="muted">{{ $t('lessonView.noMaterials') }}</p>
           <div v-for="m in lesson.data.value.materials" :key="m.id" class="card file-row">
             <AppIcon name="file" />
             <span class="file-row__name">{{ m.title }} <span class="muted small">{{ m.file_type }} {{ fmtBytes(m.file_size_bytes) }}</span></span>
-            <button v-if="m.has_file" class="btn btn--text btn--sm" :disabled="busy" @click="download(m)"><AppIcon name="download" :size="16" /> Скачать</button>
-            <a v-else :href="m.file_url" target="_blank" rel="noopener" class="btn btn--text btn--sm"><AppIcon name="link" :size="16" /> Открыть</a>
+            <button v-if="m.has_file" class="btn btn--text btn--sm" :disabled="busy" @click="download(m)"><AppIcon name="download" :size="16" /> {{ $t('ui.download') }}</button>
+            <a v-else :href="m.file_url" target="_blank" rel="noopener" class="btn btn--text btn--sm"><AppIcon name="link" :size="16" /> {{ $t('ui.open') }}</a>
           </div>
         </div>
 
         <div v-else-if="tab === 'assignments'" class="stack">
-          <p v-if="!counts.assignments" class="muted">Домашних заданий нет.</p>
+          <p v-if="!counts.assignments" class="muted">{{ $t('lessonView.noHw') }}</p>
           <RouterLink v-for="a in lesson.data.value.assignments" :key="a.id" :to="`/assignments/${a.id}`" class="card card--link file-row">
             <AppIcon name="edit" />
             <span class="file-row__name">{{ a.title }}</span>
-            <span class="muted small">до {{ fmtDateTime(a.deadline) }}</span>
+            <span class="muted small">{{ $t('ui.until', { date: fmtDateTime(a.deadline) }) }}</span>
           </RouterLink>
         </div>
 
         <div v-else-if="tab === 'tests'" class="stack">
-          <p v-if="!counts.tests" class="muted">Тестов нет.</p>
+          <p v-if="!counts.tests" class="muted">{{ $t('lessonView.noTests') }}</p>
           <RouterLink v-for="t in lesson.data.value.tests" :key="t.id" :to="`/tests/${t.id}/take`" class="card card--link file-row">
             <AppIcon name="check" />
             <span class="file-row__name">{{ t.title }}</span>

@@ -45,7 +45,12 @@ async function onSubmit() {
       </select>
     </label>
     <label>{{ $t('landing.contactMessage') }} <textarea v-model="form.message" rows="3" maxlength="2000" /></label>
-    <label class="inline consent"><input v-model="form.consent" type="checkbox" required /> {{ $t('landing.contactConsent') }}</label>
+    <label class="inline consent">
+      <input v-model="form.consent" type="checkbox" required />
+      <i18n-t keypath="landing.contactConsent" tag="span" scope="global">
+        <template #link><RouterLink to="/privacy" target="_blank">{{ $t('landing.contactConsentLink') }}</RouterLink></template>
+      </i18n-t>
+    </label>
     <p v-if="error" class="alert alert--error">{{ error }}</p>
     <button class="btn btn--lg" type="submit" :disabled="sending">
       {{ sending ? $t('landing.contactSending') : $t('landing.contactSubmit') }}
@@ -63,6 +68,9 @@ async function onSubmit() {
 .consent {
   font-size: var(--fs-body-sm);
   color: var(--text-secondary);
+}
+.consent a {
+  text-decoration: underline;
 }
 .contact-done {
   margin: 0;

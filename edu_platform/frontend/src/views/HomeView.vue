@@ -12,7 +12,7 @@ import ProgressBar from '@/components/ui/ProgressBar.vue'
 import StateBlock from '@/components/ui/StateBlock.vue'
 import { useAsync } from '@/composables/useAsync'
 import { useAuthStore } from '@/stores/auth'
-import { fmtDateTime, fmtMoney, fmtTime } from '@/utils/format'
+import { fmtDateTime, fmtMoney, fmtTime, fmtWeekday } from '@/utils/format'
 
 const auth = useAuthStore()
 const now = new Date()
@@ -55,7 +55,7 @@ const children = useAsync(() => (auth.isParent ? parentsApi.children() : Promise
 </script>
 
 <template>
-  <h1 class="greeting">Здравствуйте, {{ firstName }}</h1>
+  <h1 class="greeting">{{ $t('home.hello', { name: firstName }) }}</h1>
 
   <!-- ================= Ученик (вайрфрейм 1a) ================= -->
   <template v-if="auth.isStudent">
@@ -65,77 +65,77 @@ const children = useAsync(() => (auth.isParent ? parentsApi.children() : Promise
       </div>
       <div class="hero__body">
         <template v-if="continueCourse">
-          <div class="eyebrow">Продолжить · {{ continueCourse.course_title }}</div>
-          <h2 class="hero__title">{{ nextLesson?.title ?? 'Все уроки пройдены 🎉' }}</h2>
+          <div class="eyebrow">{{ $t('home.continue', { course: continueCourse.course_title }) }}</div>
+          <h2 class="hero__title">{{ nextLesson?.title ?? `${$t('courseView.allDone')} 🎉` }}</h2>
           <ProgressBar :value="continueCourse.percent_completed" dark />
           <div class="row">
-            <RouterLink v-if="nextLesson" :to="`/lessons/${nextLesson.id}`" class="btn">Смотреть дальше</RouterLink>
-            <RouterLink :to="`/courses/${continueCourse.course_id}`" class="btn btn--ghost">К курсу</RouterLink>
-            <span class="muted small">пройдено {{ continueCourse.percent_completed }}%</span>
+            <RouterLink v-if="nextLesson" :to="`/lessons/${nextLesson.id}`" class="btn">{{ $t('home.watchNext') }}</RouterLink>
+            <RouterLink :to="`/courses/${continueCourse.course_id}`" class="btn btn--ghost">{{ $t('lessonView.toCourse') }}</RouterLink>
+            <span class="muted small">{{ $t('home.donePct', { pct: continueCourse.percent_completed }) }}</span>
           </div>
         </template>
         <template v-else>
-          <div class="eyebrow">Начните обучение</div>
-          <h2 class="hero__title">Вы пока не записаны ни на один курс</h2>
-          <div><RouterLink to="/catalog" class="btn">Открыть каталог</RouterLink></div>
+          <div class="eyebrow">{{ $t('home.startLearning') }}</div>
+          <h2 class="hero__title">{{ $t('home.noCourses') }}</h2>
+          <div><RouterLink to="/catalog" class="btn">{{ $t('home.openCatalog') }}</RouterLink></div>
         </template>
       </div>
     </section>
 
     <div class="tiles">
       <RouterLink to="/assignments" class="card card--link tile">
-        <span class="muted small">Нужно сдать</span>
+        <span class="muted small">{{ $t('home.toSubmit') }}</span>
         <span class="stat">{{ pending.length }}</span>
-        <span class="small muted">{{ pending[0] ? `ближайшее: ${pending[0].title}` : 'всё сдано' }}</span>
+        <span class="small muted">{{ pending[0] ? $t('home.nearest', { title: pending[0].title }) : $t('home.allSubmitted') }}</span>
       </RouterLink>
       <RouterLink to="/schedule" class="card card--link tile">
-        <span class="muted small">Сегодня</span>
+        <span class="muted small">{{ $t('ui.today') }}</span>
         <span class="stat">{{ today[0] ? fmtTime(today[0].start_time) : '—' }}</span>
-        <span class="small muted">{{ today[0] ? today[0].title : 'занятий нет' }}</span>
+        <span class="small muted">{{ today[0] ? today[0].title : $t('home.noSessions') }}</span>
       </RouterLink>
       <RouterLink to="/my-courses" class="card card--link tile">
-        <span class="muted small">Мои курсы</span>
+        <span class="muted small">{{ $t('nav.myCourses') }}</span>
         <span class="stat">{{ activeCourses.length }} <span class="tile__unit">· {{ avgProgress }}%</span></span>
-        <span class="small muted">средний прогресс</span>
+        <span class="small muted">{{ $t('home.avgProgress') }}</span>
       </RouterLink>
     </div>
   </template>
 
   <!-- ================= Админ (вайрфрейм 2r) ================= -->
   <section v-if="auth.isAdmin" class="band band-stats">
-    <div class="eyebrow">{{ auth.currentOrg?.name }} · сегодня</div>
+    <div class="eyebrow">{{ $t('home.orgToday', { org: auth.currentOrg?.name ?? '' }) }}</div>
     <StateBlock :loading="summary.loading.value" :error="summary.error.value" @retry="summary.run">
       <div v-if="summary.data.value" class="band-stats__grid">
-        <div><div class="stat">{{ summary.data.value.members_by_role.student ?? 0 }}</div><span class="muted small">учеников</span></div>
-        <div><div class="stat">{{ summary.data.value.active_enrollments }}</div><span class="muted small">активных записей</span></div>
-        <div><div class="stat stat--accent">{{ summary.data.value.orders_pending }}</div><span class="muted small">оплат ждут</span></div>
-        <div><div class="stat">{{ fmtMoney(summary.data.value.revenue_30d) }}</div><span class="muted small">за 30 дней</span></div>
+        <div><div class="stat">{{ summary.data.value.members_by_role.student ?? 0 }}</div><span class="muted small">{{ $t('home.kStudents') }}</span></div>
+        <div><div class="stat">{{ summary.data.value.active_enrollments }}</div><span class="muted small">{{ $t('home.kEnrollments') }}</span></div>
+        <div><div class="stat stat--accent">{{ summary.data.value.orders_pending }}</div><span class="muted small">{{ $t('home.kOrdersPending') }}</span></div>
+        <div><div class="stat">{{ fmtMoney(summary.data.value.revenue_30d) }}</div><span class="muted small">{{ $t('home.k30d') }}</span></div>
       </div>
     </StateBlock>
-    <div class="row"><RouterLink to="/admin" class="btn btn--sm">Сводка школы</RouterLink>
-      <RouterLink v-if="summary.data.value?.orders_pending" to="/admin/orders" class="btn btn--sm btn--ghost">Подтвердить оплаты</RouterLink></div>
+    <div class="row"><RouterLink to="/admin" class="btn btn--sm">{{ $t('home.schoolSummary') }}</RouterLink>
+      <RouterLink v-if="summary.data.value?.orders_pending" to="/admin/orders" class="btn btn--sm btn--ghost">{{ $t('home.confirmPayments') }}</RouterLink></div>
   </section>
 
   <!-- ================= Учитель ================= -->
   <section v-if="auth.isTeacher && !auth.isAdmin" class="band band-stats">
-    <div class="eyebrow">Сегодня</div>
+    <div class="eyebrow">{{ $t('ui.today') }}</div>
     <div class="band-stats__grid">
-      <div><div class="stat stat--accent">{{ toReview.data.value?.total ?? 0 }}</div><span class="muted small">работ ждут проверки</span></div>
-      <div><div class="stat">{{ today.length }}</div><span class="muted small">занятий сегодня</span></div>
-      <div><div class="stat">{{ teachCourses.data.value?.total ?? 0 }}</div><span class="muted small">курсов школы</span></div>
+      <div><div class="stat stat--accent">{{ toReview.data.value?.total ?? 0 }}</div><span class="muted small">{{ $t('home.kToReview') }}</span></div>
+      <div><div class="stat">{{ today.length }}</div><span class="muted small">{{ $t('home.kSessionsToday') }}</span></div>
+      <div><div class="stat">{{ teachCourses.data.value?.total ?? 0 }}</div><span class="muted small">{{ $t('home.kSchoolCourses') }}</span></div>
     </div>
     <div class="row">
-      <RouterLink to="/teach/submissions" class="btn btn--sm">Проверить работы</RouterLink>
-      <RouterLink to="/teach/courses" class="btn btn--sm btn--ghost">Мои курсы</RouterLink>
+      <RouterLink to="/teach/submissions" class="btn btn--sm">{{ $t('home.reviewWork') }}</RouterLink>
+      <RouterLink to="/teach/courses" class="btn btn--sm btn--ghost">{{ $t('nav.myCourses') }}</RouterLink>
     </div>
   </section>
 
   <div class="grid--2 home-grid">
     <!-- Проверка работ -->
     <section v-if="auth.isTeacher" class="card">
-      <div class="row row--between"><h2>Ждут проверки</h2><RouterLink to="/teach/submissions" class="small">Все →</RouterLink></div>
+      <div class="row row--between"><h2>{{ $t('home.awaitReview') }}</h2><RouterLink to="/teach/submissions" class="small">{{ $t('ui.allArrow') }}</RouterLink></div>
       <StateBlock :loading="toReview.loading.value" :error="toReview.error.value"
-                  :empty="!toReview.data.value?.results.length" empty-text="Все работы проверены" @retry="toReview.run">
+                  :empty="!toReview.data.value?.results.length" :empty-text="$t('home.allReviewed')" @retry="toReview.run">
         <ul class="list-lines">
           <li v-for="s in toReview.data.value?.results.slice(0, 5) ?? []" :key="s.id" class="row row--between">
             <span>{{ s.student_name }} · <span class="muted">{{ s.assignment_title }}</span></span>
@@ -147,14 +147,14 @@ const children = useAsync(() => (auth.isParent ? parentsApi.children() : Promise
 
     <!-- Родитель -->
     <section v-if="auth.isParent" class="card">
-      <div class="row row--between"><h2>Мои дети</h2><RouterLink to="/children" class="small">Успеваемость →</RouterLink></div>
+      <div class="row row--between"><h2>{{ $t('nav.children') }}</h2><RouterLink to="/children" class="small">{{ $t('home.grades') }}</RouterLink></div>
       <StateBlock :loading="children.loading.value" :error="children.error.value" :empty="!children.data.value?.length"
-                  empty-text="Привяжите ребёнка в разделе «Мои дети»" @retry="children.run">
+                  :empty-text="$t('home.linkChild')" @retry="children.run">
         <ul class="list-lines">
           <li v-for="r in children.data.value ?? []" :key="r.id" class="row row--between">
             <strong>{{ r.student.full_name }}</strong>
-            <span v-if="r.is_confirmed" class="badge badge--success">доступ открыт</span>
-            <span v-else class="badge badge--warning">ждёт подтверждения</span>
+            <span v-if="r.is_confirmed" class="badge badge--success">{{ $t('home.accessOpen') }}</span>
+            <span v-else class="badge badge--warning">{{ $t('home.awaitConfirm') }}</span>
           </li>
         </ul>
       </StateBlock>
@@ -162,7 +162,7 @@ const children = useAsync(() => (auth.isParent ? parentsApi.children() : Promise
 
     <!-- Курсы ученика -->
     <section v-if="auth.isStudent && activeCourses.length" class="card">
-      <div class="row row--between"><h2>Мои курсы</h2><RouterLink to="/catalog" class="small">+ каталог</RouterLink></div>
+      <div class="row row--between"><h2>{{ $t('nav.myCourses') }}</h2><RouterLink to="/catalog" class="small">{{ $t('home.plusCatalog') }}</RouterLink></div>
       <ul class="list-lines">
         <li v-for="c in activeCourses" :key="c.course_id" class="course-line">
           <RouterLink :to="`/courses/${c.course_id}`">{{ c.course_title }}</RouterLink>
@@ -173,23 +173,23 @@ const children = useAsync(() => (auth.isParent ? parentsApi.children() : Promise
     </section>
 
     <section class="card">
-      <div class="row row--between"><h2>Ближайшие занятия</h2><RouterLink to="/schedule" class="small">Расписание →</RouterLink></div>
+      <div class="row row--between"><h2>{{ $t('home.upcoming') }}</h2><RouterLink to="/schedule" class="small">{{ $t('home.scheduleLink') }}</RouterLink></div>
       <StateBlock :loading="sessions.loading.value" :error="sessions.error.value" :empty="!sessions.data.value?.results.length"
-                  empty-text="На этой неделе занятий нет" @retry="sessions.run">
+                  :empty-text="$t('home.noWeekSessions')" @retry="sessions.run">
         <ul class="list-lines">
           <li v-for="s in sessions.data.value?.results.slice(0, 5) ?? []" :key="s.id" class="session-line">
             <strong class="session-line__time">{{ fmtTime(s.start_time) }}</strong>
             <span>{{ s.title }} <span class="muted small">· {{ s.group_name }}</span></span>
-            <span class="muted small">{{ new Date(s.start_time).toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric' }) }}</span>
+            <span class="muted small">{{ fmtWeekday(s.start_time) }}, {{ new Date(s.start_time).getDate() }}</span>
           </li>
         </ul>
       </StateBlock>
     </section>
 
     <section class="card">
-      <div class="row row--between"><h2>Объявления</h2><RouterLink to="/announcements" class="small">Все →</RouterLink></div>
+      <div class="row row--between"><h2>{{ $t('home.announcements') }}</h2><RouterLink to="/announcements" class="small">{{ $t('ui.allArrow') }}</RouterLink></div>
       <StateBlock :loading="announcements.loading.value" :error="announcements.error.value"
-                  :empty="!announcements.data.value?.results.length" empty-text="Объявлений нет" @retry="announcements.run">
+                  :empty="!announcements.data.value?.results.length" :empty-text="$t('home.noAnnouncements')" @retry="announcements.run">
         <ul class="list-lines">
           <li v-for="a in announcements.data.value?.results.slice(0, 3) ?? []" :key="a.id">
             <strong>{{ a.title }}</strong>

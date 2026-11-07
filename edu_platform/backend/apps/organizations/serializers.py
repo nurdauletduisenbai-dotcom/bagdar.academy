@@ -75,6 +75,15 @@ class AddMemberSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=OrgMembership.Role.choices)
 
 
+class MemberLookupSerializer(serializers.Serializer):
+    """Найденный пользователь для формы «Добавить существующего»."""
+    id = serializers.IntegerField()
+    email = serializers.EmailField()
+    full_name = serializers.CharField()
+    roles = serializers.ListField(child=serializers.CharField(), help_text='Активные роли в текущей организации')
+    school = serializers.CharField(allow_blank=True, help_text='Школа из справочника, если указана')
+
+
 class InviteListSerializer(serializers.ModelSerializer):
     is_valid = serializers.BooleanField(read_only=True)
 

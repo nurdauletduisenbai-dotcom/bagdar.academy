@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import generics, mixins, permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,6 +19,7 @@ from .serializers import (
     InviteCreatedSerializer,
     InviteCreateSerializer,
     InviteListSerializer,
+    MemberLookupSerializer,
     MemberSerializer,
     MyOrganizationSerializer,
     OrganizationSerializer,
@@ -189,6 +191,46 @@ class MemberViewSet(mixins.ListModelMixin, mixins.UpdateModelMixin, mixins.Destr
         AuditService.log(AuditService.Action.ROLE_CHANGE, user=request.user, request=request, entity=membership,
                          changes={'added': membership.role, 'member_user_id': user.id})
         return Response(MemberSerializer(membership).data, status=status.HTTP_201_CREATED)
+
+
+    @extend_schema(
+        summary='Найти пользователя для добавления (админ)',
+        description=('Суперпользователь ищет по части email или имени (до 10 результатов). '
+                     'Администратор организации — только по точному email: так нельзя перебрать всех '
+                     'пользователей платформы.'),
+        parameters=[OpenApiParameter('q', str, required=True)],
+        responses=MemberLookupSerializer(many=True),
+    )
+    @action(detail=False, methods=['get'])
+    def lookup(self, request):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from django.core.validators import validate_email
+        from django.db.models import Q
+
+        from apps.accounts.models import User
+
+        org_id = _require_admin(request)
+        q = request.query_params.get('q', '').strip()
+        users = User.objects.filter(is_active=True).select_related('school')
+        if request.user.is_superuser and len(q) >= 2:
+            words = q.split()[:3]
+            cond = Q()
+            for w in words:
+                cond &= Q(email__icontains=w) | Q(first_name__icontains=w) | Q(last_name__icontains=w)
+            users = list(users.filter(cond).order_by('email')[:10])
+        else:
+            try:
+                validate_email(q)
+            except DjangoValidationError:
+                return Response([])
+            users = list(users.filter(email__iexact=q)[:1])
+
+        roles = {}
+        for m in OrgMembership.objects.filter(org_id=org_id, user_id__in=[u.id for u in users], is_active=True):
+            roles.setdefault(m.user_id, []).append(m.role)
+        data = [{'id': u.id, 'email': u.email, 'full_name': u.get_full_name() or u.email,
+                 'roles': roles.get(u.id, []), 'school': u.school.name if u.school else ''} for u in users]
+        return Response(MemberLookupSerializer(data, many=True).data)
 
 
 @extend_schema(tags=['organizations'])

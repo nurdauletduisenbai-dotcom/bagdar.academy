@@ -26,11 +26,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <AuthCard title="Подтверждение email">
-    <p v-if="state === 'loading'" class="muted">Проверяем ссылку…</p>
+  <AuthCard :title="$t('titles.verifyEmail')">
+    <p v-if="state === 'loading'" class="muted">{{ $t('verify.checking') }}</p>
     <div v-else-if="state === 'ok'" class="stack">
-      <div class="alert alert--success">Email подтверждён.</div>
-      <RouterLink to="/" class="btn">Продолжить</RouterLink>
+      <div class="alert alert--success">{{ $t('verify.done') }}</div>
+      <RouterLink to="/" class="btn">{{ $t('ui.continue') }}</RouterLink>
     </div>
     <div v-else class="alert alert--error">{{ error }}</div>
   </AuthCard>

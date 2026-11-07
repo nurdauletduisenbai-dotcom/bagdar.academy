@@ -6,27 +6,23 @@ import AppPager from '@/components/ui/AppPager.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import StateBlock from '@/components/ui/StateBlock.vue'
 import { useAsync } from '@/composables/useAsync'
-import { fmtDateTime } from '@/utils/format'
+import { auditActionLabels, fmtDateTime } from '@/utils/format'
 
-const actions: Record<string, string> = {
-  login: 'Вход', logout: 'Выход', password_change: 'Смена пароля', password_reset: 'Сброс пароля',
-  role_change: 'Изменение ролей', member_deactivate: 'Отключение участника', course_create: 'Создание курса',
-  course_delete: 'Удаление курса', payment_paid: 'Оплата', payment_refund: 'Возврат', grade_change: 'Оценка',
-}
+const actions = auditActionLabels
 const filters = reactive({ action: '', page: 1 })
 const logs = useAsync(() => orgsApi.auditLogs({ action: filters.action || undefined, page: filters.page }))
 </script>
 
 <template>
-  <PageHeader title="Журнал аудита" subtitle="Критичные действия в школе" />
+  <PageHeader :title="$t('admin.audit.title')" :subtitle="$t('admin.audit.subtitle')" />
   <select v-model="filters.action" style="max-width: 260px; margin-bottom: var(--space-lg)" @change="filters.page = 1; logs.run()">
-    <option value="">Все действия</option>
+    <option value="">{{ $t('admin.audit.allActions') }}</option>
     <option v-for="(label, key) in actions" :key="key" :value="key">{{ label }}</option>
   </select>
   <StateBlock :loading="logs.loading.value" :error="logs.error.value" :empty="!logs.data.value?.results.length" @retry="logs.run">
     <div class="card card--flush table-wrap">
       <table class="table">
-        <thead><tr><th>Время</th><th>Действие</th><th>Кто</th><th>IP</th><th>Объект</th><th>Детали</th></tr></thead>
+        <thead><tr><th>{{ $t('admin.audit.colTime') }}</th><th>{{ $t('admin.audit.colAction') }}</th><th>{{ $t('admin.audit.colWho') }}</th><th>IP</th><th>{{ $t('admin.audit.colObject') }}</th><th>{{ $t('admin.audit.colDetails') }}</th></tr></thead>
         <tbody>
           <tr v-for="l in logs.data.value?.results ?? []" :key="l.id">
             <td class="small nowrap">{{ fmtDateTime(l.created_at) }}</td>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import { errorMessage } from '@/api/http'
@@ -15,6 +16,9 @@ import type { AttemptQuestion, AttemptStarted } from '@/types/api'
 import { attemptStatusLabels, fmtDateTime, testModeLabels } from '@/utils/format'
 
 const props = defineProps<{ id: string }>()
+
+const { t } = useI18n()
+
 const router = useRouter()
 const auth = useAuthStore()
 const toast = useToast()
@@ -67,7 +71,7 @@ function startTimer() {
     secondsLeft.value = Math.round((deadline - Date.now()) / 1000)
     if (secondsLeft.value <= 0) {
       stopTimer()
-      toast.info('Время вышло — тест отправлен автоматически')
+      toast.info(t('take.timeUp'))
       submit(true)
     }
   }
@@ -108,7 +112,7 @@ function onText(q: AttemptQuestion, value: string) {
 
 async function submit(auto = false) {
   if (!attempt.value) return
-  if (!auto && !confirm(`Сдать тест? Отвечено ${answeredCount.value} из ${attempt.value.questions.length}.`)) return
+  if (!auto && !confirm(t('take.confirmSubmit', { done: answeredCount.value, total: attempt.value.questions.length }))) return
   Object.values(textTimers).forEach(clearTimeout)
   await Promise.all(attempt.value.questions.filter((q) => ['short', 'number', 'open'].includes(q.type)).map(save))
   const result = await act(() => testsApi.submit(attempt.value!.attempt_id))
@@ -146,37 +150,37 @@ onBeforeUnmount(() => {
       <!-- ====== Вступление (вайрфрейм 1i) ====== -->
       <template v-if="!attempt">
         <section class="band page-band intro">
-          <RouterLink :to="`/courses/${info.data.value.course}`" class="back small"><AppIcon name="arrow-left" :size="14" /> К курсу</RouterLink>
+          <RouterLink :to="`/courses/${info.data.value.course}`" class="back small"><AppIcon name="arrow-left" :size="14" /> {{ $t('ui.toCourse') }}</RouterLink>
           <div class="eyebrow">{{ testModeLabels[info.data.value.mode] }}</div>
           <h1 class="intro__title">{{ info.data.value.title }}</h1>
           <p v-if="info.data.value.description" class="muted">{{ info.data.value.description }}</p>
           <div class="intro__stats">
-            <span><strong>{{ info.data.value.questions_count }}</strong> вопросов</span>
-            <span><strong>{{ info.data.value.time_limit_minutes || '∞' }}</strong> мин</span>
-            <span><strong>{{ info.data.value.passing_score_pct }}%</strong> проход</span>
-            <span><strong>{{ info.data.value.attempts_used }}/{{ info.data.value.max_attempts || '∞' }}</strong> попытки</span>
+            <span><strong>{{ info.data.value.questions_count }}</strong> {{ $t('take.questions') }}</span>
+            <span><strong>{{ info.data.value.time_limit_minutes || '∞' }}</strong> {{ $t('take.min') }}</span>
+            <span><strong>{{ info.data.value.passing_score_pct }}%</strong> {{ $t('take.passing') }}</span>
+            <span><strong>{{ info.data.value.attempts_used }}/{{ info.data.value.max_attempts || '∞' }}</strong> {{ $t('take.attempts') }}</span>
           </div>
           <div class="row">
-            <button class="btn btn--lg" :disabled="busy" @click="start">Начать тест</button>
-            <RouterLink v-if="auth.isStaff" :to="`/teach/tests/${id}`" class="btn btn--ghost">Редактор теста</RouterLink>
+            <button class="btn btn--lg" :disabled="busy" @click="start">{{ $t('take.start') }}</button>
+            <RouterLink v-if="auth.isStaff" :to="`/teach/tests/${id}`" class="btn btn--ghost">{{ $t('titles.testEditor') }}</RouterLink>
           </div>
         </section>
 
         <div class="alert">
-          <span class="row"><AppIcon name="info" :size="16" /> Ответы сохраняются автоматически. Уход со вкладки и копирование фиксируются.</span>
+          <span class="row"><AppIcon name="info" :size="16" /> {{ $t('take.rules') }}</span>
         </div>
 
         <section class="attempts">
-          <h2>Мои попытки</h2>
+          <h2>{{ $t('take.myAttempts') }}</h2>
           <StateBlock :loading="attempts.loading.value" :error="attempts.error.value"
-                      :empty="!attempts.data.value?.length" empty-text="Попыток ещё не было" @retry="attempts.run">
+                      :empty="!attempts.data.value?.length" :empty-text="$t('take.noAttempts')" @retry="attempts.run">
             <ul class="list-lines">
               <li v-for="a in attempts.data.value ?? []" :key="a.id" class="row row--between">
                 <RouterLink :to="`/attempts/${a.id}`">{{ fmtDateTime(a.started_at) }}</RouterLink>
                 <span class="row small">
                   <span v-if="a.status !== 'in_progress'">{{ a.score_pct }}%</span>
                   <span class="badge" :class="a.is_passed ? 'badge--success' : a.status === 'submitted' ? 'badge--warning' : ''">
-                    {{ a.is_passed ? 'сдан' : attemptStatusLabels[a.status] }}
+                    {{ a.is_passed ? $t('take.passedBadge') : attemptStatusLabels[a.status] }}
                   </span>
                 </span>
               </li>
@@ -196,30 +200,30 @@ onBeforeUnmount(() => {
 
         <div class="split">
           <article class="card question">
-            <div class="eyebrow">Вопрос {{ current + 1 }} из {{ attempt.questions.length }} · {{ question.points }} б.</div>
+            <div class="eyebrow">{{ $t('take.questionOf', { n: current + 1, total: attempt.questions.length }) }} · {{ $t('ui.points', { n: question.points }) }}</div>
             <MathText :text="question.text" block class="question__text" />
             <QuestionInput :key="question.id" :question="question" :selected="answers[question.id].selected"
                            :text="answers[question.id].text"
                            @update:selected="onSelected(question, $event)" @update:text="onText(question, $event)" />
             <div class="question__nav">
-              <button class="btn btn--text" :disabled="current === 0" @click="current--"><AppIcon name="arrow-left" :size="16" /> Назад</button>
+              <button class="btn btn--text" :disabled="current === 0" @click="current--"><AppIcon name="arrow-left" :size="16" /> {{ $t('ui.back') }}</button>
               <span class="muted small">
-                <template v-if="saving[question.id] === 'saving'">сохраняем…</template>
-                <template v-else-if="saving[question.id] === 'saved'">сохранено</template>
-                <span v-else-if="saving[question.id] === 'error'" class="error">ошибка сохранения</span>
+                <template v-if="saving[question.id] === 'saving'">{{ $t('take.saving') }}</template>
+                <template v-else-if="saving[question.id] === 'saved'">{{ $t('take.saved') }}</template>
+                <span v-else-if="saving[question.id] === 'error'" class="error">{{ $t('take.saveError') }}</span>
               </span>
-              <button v-if="current < attempt.questions.length - 1" class="btn" @click="current++">Дальше <AppIcon name="arrow-right" :size="16" /></button>
-              <button v-else class="btn" :disabled="busy" @click="submit()">Сдать тест</button>
+              <button v-if="current < attempt.questions.length - 1" class="btn" @click="current++">{{ $t('take.next') }} <AppIcon name="arrow-right" :size="16" /></button>
+              <button v-else class="btn" :disabled="busy" @click="submit()">{{ $t('take.submit') }}</button>
             </div>
           </article>
 
           <aside class="card navigator">
-            <span class="muted small">Отвечено {{ answeredCount }} / {{ attempt.questions.length }}</span>
+            <span class="muted small">{{ $t('take.answered', { done: answeredCount, total: attempt.questions.length }) }}</span>
             <div class="navigator__grid">
               <button v-for="(q, i) in attempt.questions" :key="q.id" class="nav-chip"
                       :class="{ current: i === current, answered: isAnswered(q) }" @click="current = i">{{ i + 1 }}</button>
             </div>
-            <button class="btn btn--block" :disabled="busy" @click="submit()">Сдать тест</button>
+            <button class="btn btn--block" :disabled="busy" @click="submit()">{{ $t('take.submit') }}</button>
           </aside>
         </div>
       </template>

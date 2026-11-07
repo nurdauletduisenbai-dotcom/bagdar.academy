@@ -1,0 +1,34 @@
+# bagdar.academy: в поиск — только публичный сайт (главная и новости).
+# Кабинет, вход и служебные адреса индексировать незачем: там всё за авторизацией.
+User-agent: *
+Allow: /
+Disallow: /api/
+# Ленту новостей поисковик подгружает, когда рендерит /news и посты
+Allow: /api/v1/news/
+Disallow: /admin
+Disallow: /docs
+Disallow: /redoc
+Disallow: /home
+Disallow: /teach/
+Disallow: /catalog
+Disallow: /my-courses
+Disallow: /courses/
+Disallow: /lessons/
+Disallow: /tests/
+Disallow: /attempts/
+Disallow: /assignments
+Disallow: /schedule
+Disallow: /notifications
+Disallow: /announcements
+Disallow: /progress
+Disallow: /children
+Disallow: /orders
+Disallow: /profile
+Disallow: /login
+Disallow: /register
+Disallow: /invite
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /verify-email
+
+Sitemap: https://bagdar.academy/sitemap.xml

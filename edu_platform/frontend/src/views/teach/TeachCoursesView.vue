@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import { coursesApi, type CoursePayload } from '@/api/courses'
@@ -12,6 +13,8 @@ import StateBlock from '@/components/ui/StateBlock.vue'
 import { useAction, useAsync } from '@/composables/useAsync'
 import { useAuthStore } from '@/stores/auth'
 
+const { t } = useI18n()
+
 const auth = useAuthStore()
 const router = useRouter()
 const { act, busy } = useAction()
@@ -20,7 +23,7 @@ const courses = useAsync(() => coursesApi.list({ page: page.value }))
 const creating = ref(false)
 
 async function create(payload: CoursePayload) {
-  const course = await act(() => coursesApi.create(payload), 'Курс создан')
+  const course = await act(() => coursesApi.create(payload), t('teach.courses.created'))
   if (course) router.push(`/teach/courses/${course.id}`)
 }
 
@@ -31,8 +34,8 @@ function goTo(p: number) {
 </script>
 
 <template>
-  <PageHeader title="Курсы школы" subtitle="Включая черновики. Редактировать может админ или преподаватель курса.">
-    <button v-if="auth.isTeacher" class="btn" @click="creating = true">+ Новый курс</button>
+  <PageHeader :title="$t('teach.courses.title')" :subtitle="$t('teach.courses.subtitle')">
+    <button v-if="auth.isTeacher" class="btn" @click="creating = true">{{ $t('teach.courses.new') }}</button>
   </PageHeader>
 
   <StateBlock :loading="courses.loading.value" :error="courses.error.value"
@@ -44,7 +47,7 @@ function goTo(p: number) {
     <AppPager :page="page" :total-pages="courses.data.value?.total_pages ?? 1" @change="goTo" />
   </StateBlock>
 
-  <AppModal v-if="creating" title="Новый курс" wide @close="creating = false">
+  <AppModal v-if="creating" :title="$t('teach.courses.newTitle')" wide @close="creating = false">
     <CourseForm :busy="busy" @save="create" />
   </AppModal>
 </template>

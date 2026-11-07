@@ -20,11 +20,11 @@ defineProps<{ course: Course; to?: string; showStatus?: boolean; cta?: string }>
     </div>
     <h3 class="course-card__title">{{ course.title }}</h3>
     <span class="course-card__meta">
-      {{ courseTypeLabels[course.type] }}<template v-if="course.grade_level"> · {{ course.grade_level }} кл.</template>
+      {{ courseTypeLabels[course.type] }}<template v-if="course.grade_level"> · {{ $t('courseCard.grade', { n: course.grade_level }) }}</template>
     </span>
     <div class="course-card__foot">
       <strong>{{ fmtMoney(course.price) }}</strong>
-      <span class="course-card__cta">{{ cta ?? 'Подробнее' }} <AppIcon name="arrow-right" :size="14" /></span>
+      <span class="course-card__cta">{{ cta ?? $t('courseCard.more') }} <AppIcon name="arrow-right" :size="14" /></span>
     </div>
   </RouterLink>
 </template>

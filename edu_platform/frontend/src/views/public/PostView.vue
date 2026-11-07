@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 
+import { useI18n } from 'vue-i18n'
+
 import { coverSrc, newsApi } from '@/api/news'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import StateBlock from '@/components/ui/StateBlock.vue'
 import { useAsync } from '@/composables/useAsync'
 import { useAuthStore } from '@/stores/auth'
 import { fmtDateLong } from '@/utils/format'
+import { setPageMeta } from '@/utils/seo'
 
 const props = defineProps<{ slug: string }>()
 const auth = useAuthStore()
+const { locale } = useI18n()
 const post = useAsync(() => newsApi.get(props.slug))
 
 /** Текст хранится обычным текстом: пустая строка — новый абзац (без v-html — никакого HTML от автора) */
@@ -18,8 +22,16 @@ const paragraphs = computed(() =>
 )
 const cover = computed(() => (post.data.value ? coverSrc(post.data.value) : null))
 
-watch(() => post.data.value?.title, (title) => {
-  if (title) document.title = `${title} — bagdar.academy`
+// Заголовок, описание и превью страницы — из самого поста (общие теги ставит роутер до загрузки)
+watch(post.data, (data) => {
+  if (!data) return
+  setPageMeta({
+    title: data.title,
+    description: data.summary,
+    image: coverSrc(data) ?? undefined,
+    type: 'article',
+    locale: locale.value,
+  })
 })
 </script>
 

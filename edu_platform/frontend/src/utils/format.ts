@@ -1,84 +1,41 @@
 import { i18n } from '@/i18n'
 import type { Role } from '@/types/api'
 
-/** @deprecated используйте {@link roleLabel} — учитывает текущий язык (RU/KK) */
-export const roleLabels: Record<Role, string> = {
-  admin: 'Администратор',
-  teacher: 'Учитель',
-  curator: 'Куратор',
-  student: 'Ученик',
-  parent: 'Родитель',
-}
-
 /** Название роли на текущем языке интерфейса (i18n-ключ `roles.<role>`) */
 export function roleLabel(role: Role): string {
   return i18n.global.t(`roles.${role}`)
 }
 
-export const courseTypeLabels: Record<string, string> = {
-  school_subject: 'Школьный предмет',
-  exam_prep: 'Подготовка к экзамену',
-  club: 'Кружок',
+/**
+ * Словарь «значение API → подпись» на текущем языке (ключи `labels.<group>.<value>`).
+ * Работает и как `map[key]`, и в `v-for="(label, key) in map"`: текст берётся из i18n при каждом чтении,
+ * поэтому шаблон перерисовывается при смене языка. Неизвестный ключ → undefined (для `?? key`).
+ */
+function labelMap<K extends string>(group: string, keys: readonly K[]): Record<string, string> {
+  const target = Object.fromEntries(keys.map((k) => [k, k])) as Record<string, string>
+  return new Proxy(target, {
+    get: (obj, key) => (typeof key === 'string' && key in obj ? i18n.global.t(group ? `labels.${group}.${key}` : `roles.${key}`) : undefined),
+  })
 }
 
-export const courseStatusLabels: Record<string, string> = {
-  draft: 'Черновик',
-  published: 'Опубликован',
-  archived: 'В архиве',
-}
+/** Роли для выпадающих списков (`v-for="(label, key) in roleOptions"`) */
+export const roleOptions = labelMap('', ['admin', 'teacher', 'curator', 'student', 'parent'] satisfies Role[])
 
-export const questionTypeLabels: Record<string, string> = {
-  single: 'Один ответ',
-  multi: 'Несколько ответов',
-  short: 'Короткий текст',
-  number: 'Число',
-  match: 'Сопоставление',
-  open: 'Развёрнутый ответ',
-}
+export const courseTypeLabels = labelMap('courseType', ['school_subject', 'exam_prep', 'club'])
+export const courseStatusLabels = labelMap('courseStatus', ['draft', 'published', 'archived'])
+export const questionTypeLabels = labelMap('questionType', ['single', 'multi', 'short', 'number', 'match', 'open'])
+export const testModeLabels = labelMap('testMode', ['practice', 'quiz', 'exam', 'mock_exam'])
+export const attemptStatusLabels = labelMap('attemptStatus', ['in_progress', 'submitted', 'expired', 'graded'])
+export const submissionStatusLabels = labelMap('submissionStatus', ['submitted', 'graded', 'returned', 'pending', 'overdue'])
+export const attendanceLabels = labelMap('attendance', ['present', 'absent', 'late', 'excused'])
+export const orderStatusLabels = labelMap('orderStatus', ['pending', 'paid', 'failed', 'refunded'])
+export const enrollmentStatusLabels = labelMap('enrollmentStatus', ['active', 'expired', 'canceled', 'suspended'])
+export const auditActionLabels = labelMap('auditAction', [
+  'login', 'logout', 'password_change', 'password_reset', 'role_change', 'member_deactivate',
+  'course_create', 'course_delete', 'payment_paid', 'payment_refund', 'grade_change',
+])
 
-export const testModeLabels: Record<string, string> = {
-  practice: 'Практика',
-  quiz: 'Квиз',
-  exam: 'Экзамен',
-  mock_exam: 'Пробный экзамен',
-}
-
-export const attemptStatusLabels: Record<string, string> = {
-  in_progress: 'В процессе',
-  submitted: 'Ждёт проверки',
-  expired: 'Время истекло',
-  graded: 'Оценено',
-}
-
-export const submissionStatusLabels: Record<string, string> = {
-  submitted: 'Ждёт проверки',
-  graded: 'Проверено',
-  returned: 'На доработке',
-  pending: 'Не сдано',
-  overdue: 'Просрочено',
-}
-
-export const attendanceLabels: Record<string, string> = {
-  present: 'Был',
-  absent: 'Не был',
-  late: 'Опоздал',
-  excused: 'Уважительная',
-}
-
-export const orderStatusLabels: Record<string, string> = {
-  pending: 'Ожидает оплаты',
-  paid: 'Оплачен',
-  failed: 'Отменён',
-  refunded: 'Возврат',
-}
-
-export const enrollmentStatusLabels: Record<string, string> = {
-  active: 'Активна',
-  expired: 'Истекла',
-  canceled: 'Отменена',
-  suspended: 'Приостановлена',
-}
-
+// Числовые форматы (дд.мм.гггг, чч:мм) одинаковы для kk и ru — берём ru-RU, у него данные Intl есть везде
 const dateFmt = new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
 const dateTimeFmt = new Intl.DateTimeFormat('ru-RU', {
   day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -91,7 +48,7 @@ export const fmtTime = (v?: string | null) => (v ? timeFmt.format(new Date(v)) :
 
 export function fmtMoney(value: string | number, currency = 'KZT') {
   const n = Number(value)
-  if (!n) return 'Бесплатно'
+  if (!n) return i18n.global.t('ui.free')
   return `${n.toLocaleString('ru-RU')} ${currency === 'KZT' ? '₸' : currency}`
 }
 
@@ -103,8 +60,8 @@ export function fmtDuration(seconds: number) {
 
 export function fmtBytes(bytes: number) {
   if (!bytes) return ''
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} КБ`
-  return `${(bytes / 1024 / 1024).toFixed(1)} МБ`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} ${i18n.global.t('ui.kb')}`
+  return `${(bytes / 1024 / 1024).toFixed(1)} ${i18n.global.t('ui.mb')}`
 }
 
 /** ISO-строка -> значение для <input type="datetime-local"> */
@@ -131,7 +88,16 @@ export function subjectTone(subject?: string | null): string {
 
 const KK_MONTHS = ['қаңтар', 'ақпан', 'наурыз', 'сәуір', 'мамыр', 'маусым',
   'шілде', 'тамыз', 'қыркүйек', 'қазан', 'қараша', 'желтоқсан']
+const KK_MONTHS_SHORT = ['қаң.', 'ақп.', 'нау.', 'сәу.', 'мам.', 'мау.', 'шіл.', 'там.', 'қыр.', 'қаз.', 'қар.', 'жел.']
+/** Индекс как у Date.getDay(): 0 — воскресенье */
+const KK_WEEKDAYS_SHORT = ['жс', 'дс', 'сс', 'ср', 'бс', 'жм', 'сн']
 const ruLongDate = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+const ruDayMonth = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' })
+const ruDayMonthShort = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' })
+const ruWeekdayShort = new Intl.DateTimeFormat('ru-RU', { weekday: 'short' })
+
+const isKk = () => i18n.global.locale.value === 'kk'
+const toDate = (v: string | Date) => (v instanceof Date ? v : new Date(v))
 
 /**
  * «24 қазан 2026 ж.» / «24 октября 2026 г.» — дата на текущем языке интерфейса.
@@ -140,6 +106,19 @@ const ruLongDate = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'lo
 export function fmtDateLong(v?: string | null): string {
   if (!v) return '—'
   const d = new Date(v)
-  if (i18n.global.locale.value === 'kk') return `${d.getDate()} ${KK_MONTHS[d.getMonth()]} ${d.getFullYear()} ж.`
+  if (isKk()) return `${d.getDate()} ${KK_MONTHS[d.getMonth()]} ${d.getFullYear()} ж.`
   return ruLongDate.format(d)
+}
+
+/** «24 қазан» / «24 октября»; `short` — «24 қаз.» / «24 окт.» */
+export function fmtDayMonth(v: string | Date, short = false): string {
+  const d = toDate(v)
+  if (isKk()) return `${d.getDate()} ${(short ? KK_MONTHS_SHORT : KK_MONTHS)[d.getMonth()]}`
+  return (short ? ruDayMonthShort : ruDayMonth).format(d)
+}
+
+/** Короткий день недели: «дс» / «пн» */
+export function fmtWeekday(v: string | Date): string {
+  const d = toDate(v)
+  return isKk() ? KK_WEEKDAYS_SHORT[d.getDay()] : ruWeekdayShort.format(d)
 }

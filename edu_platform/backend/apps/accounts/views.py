@@ -14,9 +14,11 @@ from .models import ParentStudentRelation, RefreshToken
 from .serializers import (
     ChangePasswordSerializer,
     EmailSerializer,
+    InvitePreviewSerializer,
     LoginResponseSerializer,
     LoginSerializer,
     LogoutSerializer,
+    MySchoolSerializer,
     ParentLinkRequestSerializer,
     ParentRelationSerializer,
     PasswordResetConfirmSerializer,
@@ -115,6 +117,17 @@ class RegisterByInviteView(AuthThrottledView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+@extend_schema(tags=['auth'])
+class InvitePreviewView(AuthThrottledView):
+    """Что показать по ссылке из письма: кому и куда приглашение, или почему оно уже не действует."""
+
+    @extend_schema(summary='Проверить приглашение по токену (без регистрации)',
+                   parameters=[OpenApiParameter('token', str, required=True)], responses=InvitePreviewSerializer)
+    def get(self, request):
+        data = AuthService.preview_invite(request.query_params.get('token', ''))
+        return Response(InvitePreviewSerializer(data).data)
 
 
 @extend_schema(tags=['auth'])
@@ -220,6 +233,42 @@ class UserProfileView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+@extend_schema(tags=['auth'])
+class MySchoolView(APIView):
+    """Смена своей школы из профиля: из справочника или своя (уходит на проверку). Ученик переходит в её организацию."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(summary='Сменить свою школу', request=MySchoolSerializer, responses=UserProfileSerializer)
+    def put(self, request):
+        from apps.schools.models import School
+        from apps.schools.services import set_student_school
+
+        serializer = MySchoolSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        school = serializer.validated_data.get('school')
+        new_school = serializer.validated_data.get('new_school')
+        if new_school:
+            own = user.school
+            reusable = (own and own.source == School.Source.USER and not own.is_approved
+                        and own.created_by_id == user.id and not own.students.exclude(id=user.id).exists())
+            if reusable:  # правим свою же заявку, а не плодим новые
+                for field, value in new_school.items():
+                    setattr(own, field, value)
+                own.save()
+                school = own
+            else:
+                school = School.objects.create(**new_school, is_approved=False, source=School.Source.USER,
+                                               created_by=user)
+        if user.memberships.filter(role='student').exists():
+            # Ученик переходит в организацию новой школы (пустая создаётся автоматически)
+            set_student_school(user, school)
+        else:
+            user.school = school
+            user.save(update_fields=['school', 'updated_at'])
+        return Response(UserProfileSerializer(user, context={'request': request}).data)
 
 
 @extend_schema(tags=['auth'])
@@ -388,6 +437,7 @@ class ParentRequestDetailView(APIView):
         relation = get_object_or_404(ParentStudentRelation, id=relation_id, student=request.user)
         relation.is_confirmed = True
         relation.save(update_fields=['is_confirmed', 'updated_at'])
+        ParentService.join_child_orgs(relation.parent, relation.student)
         return Response(ParentRelationSerializer(relation).data)
 
     @extend_schema(summary='Отклонить / отозвать доступ родителя', responses={204: None})

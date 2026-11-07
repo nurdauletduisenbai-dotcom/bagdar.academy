@@ -18,7 +18,7 @@ VPS на Ubuntu 24.04 (`109.248.198.199`, вход `root`, приложение 
 ```text
 nginx :80/:443 ─┬─ /            → /var/www/<домен>/frontend   (собранный Vue)
                 ├─ /static/     → /var/www/<домен>/static     (collectstatic)
-                └─ /api /admin /docs /health … → gunicorn (bagdar[-dev]-backend)
+                └─ /api /admin /docs /health /sitemap.xml … → gunicorn (bagdar[-dev]-backend)
 Celery: bagdar[-dev]-worker + bagdar[-dev]-beat → Redis 127.0.0.1:6379
 ```
 

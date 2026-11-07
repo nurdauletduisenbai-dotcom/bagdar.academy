@@ -1,5 +1,7 @@
+import logging
 import mimetypes
 
+from django.db import transaction
 from django.http import FileResponse
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import permissions, status, viewsets
@@ -11,6 +13,9 @@ from rest_framework.views import APIView
 
 from .models import Post
 from .serializers import ContactRequestSerializer, PlatformStatsSerializer, PostDetailSerializer, PostListSerializer
+from .tasks import leads_notify_configured, notify_new_contact_request
+
+logger = logging.getLogger(__name__)
 
 
 @extend_schema_view(
@@ -83,5 +88,15 @@ class ContactRequestView(APIView):
     def post(self, request):
         serializer = ContactRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        contact = serializer.save()
+        if leads_notify_configured():
+            transaction.on_commit(lambda: self._notify_team(contact.pk))
         return Response(status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    def _notify_team(request_id: int):
+        # Брокер недоступен или задача упала — заявка уже сохранена, посетитель ответ получает в любом случае
+        try:
+            notify_new_contact_request.delay(request_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.error('Lead %s: failed to queue team notification: %s', request_id, exc)

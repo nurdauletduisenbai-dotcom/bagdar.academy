@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 
 import { submissionsApi } from '@/api/assignments'
@@ -10,6 +11,8 @@ import StateBlock from '@/components/ui/StateBlock.vue'
 import { useAction, useAsync } from '@/composables/useAsync'
 import type { Submission } from '@/types/api'
 import { fmtDateTime, submissionStatusLabels } from '@/utils/format'
+
+const { t } = useI18n()
 
 const route = useRoute()
 const { act, busy } = useAction()
@@ -36,7 +39,7 @@ async function save(canResubmit: boolean) {
   if (!s) return
   const index = items.value.findIndex((x) => x.id === s.id)
   const ok = await act(() => submissionsApi.grade(s.id, { ...grade, can_resubmit: canResubmit }),
-    canResubmit ? 'Возвращено на доработку' : 'Оценка сохранена — ученик получил уведомление')
+    canResubmit ? t('teach.review.returned') : t('teach.review.graded'))
   if (ok) {
     await list.run()
     // «Принять · следующая»: переходим к следующей работе в очереди
@@ -46,22 +49,22 @@ async function save(canResubmit: boolean) {
 </script>
 
 <template>
-  <PageHeader title="Проверка работ" subtitle="Домашние задания ваших курсов">
-    <button v-if="filters.assignment" class="btn btn--ghost btn--sm" @click="filters.assignment = undefined; list.run()">Все задания ✕</button>
+  <PageHeader :title="$t('titles.submissions')" :subtitle="$t('teach.review.subtitle')">
+    <button v-if="filters.assignment" class="btn btn--ghost btn--sm" @click="filters.assignment = undefined; list.run()">{{ $t('teach.review.allAssignments') }}</button>
   </PageHeader>
 
   <div class="pills" style="margin-bottom: var(--space-lg)">
-    <button class="pill" :class="{ active: filters.status === 'submitted' }" @click="setStatus('submitted')">Ждут</button>
-    <button class="pill" :class="{ active: filters.status === 'returned' }" @click="setStatus('returned')">На доработке</button>
-    <button class="pill" :class="{ active: filters.status === 'graded' }" @click="setStatus('graded')">Проверены</button>
-    <button class="pill" :class="{ active: !filters.status }" @click="setStatus('')">Все</button>
+    <button class="pill" :class="{ active: filters.status === 'submitted' }" @click="setStatus('submitted')">{{ $t('teach.review.fSubmitted') }}</button>
+    <button class="pill" :class="{ active: filters.status === 'returned' }" @click="setStatus('returned')">{{ $t('teach.review.fReturned') }}</button>
+    <button class="pill" :class="{ active: filters.status === 'graded' }" @click="setStatus('graded')">{{ $t('teach.review.fGraded') }}</button>
+    <button class="pill" :class="{ active: !filters.status }" @click="setStatus('')">{{ $t('ui.all') }}</button>
   </div>
 
   <StateBlock :loading="list.loading.value && !list.data.value" :error="list.error.value" :empty="!items.length"
-              empty-text="Работ нет — всё проверено" @retry="list.run">
+              :empty-text="$t('teach.review.empty')" @retry="list.run">
     <div class="card card--flush review">
       <aside class="queue">
-        <div class="queue__head"><strong>{{ submissionStatusLabels[filters.status] ?? 'Все' }}</strong> <span class="muted">· {{ list.data.value?.total ?? 0 }}</span></div>
+        <div class="queue__head"><strong>{{ submissionStatusLabels[filters.status] ?? $t('ui.all') }}</strong> <span class="muted">· {{ list.data.value?.total ?? 0 }}</span></div>
         <nav class="side-nav">
           <button v-for="s in items" :key="s.id" :class="{ active: current?.id === s.id }" @click="currentId = s.id">
             <span>{{ s.student_name }} · {{ s.assignment_title }}</span>
@@ -72,27 +75,27 @@ async function save(canResubmit: boolean) {
       <section v-if="current" class="work">
         <div class="row row--between">
           <strong>{{ current.assignment_title }} · {{ current.student_name }}</strong>
-          <span class="muted small">сдано {{ fmtDateTime(current.submitted_at) }}<span v-if="current.is_late" class="error"> · с опозданием</span></span>
+          <span class="muted small">{{ $t('assignment.submittedAt', { date: fmtDateTime(current.submitted_at) }) }}<span v-if="current.is_late" class="error">{{ $t('assignment.late') }}</span></span>
         </div>
         <div class="work__content">
           <p v-if="current.text_content">{{ current.text_content }}</p>
-          <p v-else class="muted">Текстового ответа нет.</p>
+          <p v-else class="muted">{{ $t('teach.review.noText') }}</p>
           <div class="row">
-            <button v-if="current.has_file" class="btn btn--ghost btn--sm" @click="act(() => downloadFile(current!.download_url!, 'работа'))">
-              <AppIcon name="download" :size="16" /> Файл ученика
+            <button v-if="current.has_file" class="btn btn--ghost btn--sm" @click="act(() => downloadFile(current!.download_url!, $t('teach.review.fileName')))">
+              <AppIcon name="download" :size="16" /> {{ $t('teach.review.studentFile') }}
             </button>
-            <a v-if="current.file_url" :href="current.file_url" target="_blank" rel="noopener" class="btn btn--ghost btn--sm"><AppIcon name="link" :size="16" /> Ссылка</a>
+            <a v-if="current.file_url" :href="current.file_url" target="_blank" rel="noopener" class="btn btn--ghost btn--sm"><AppIcon name="link" :size="16" /> {{ $t('teach.review.link') }}</a>
           </div>
         </div>
         <div class="grade">
           <label class="grade__score">
-            <input v-model.number="grade.score" type="number" min="0" step="0.5" aria-label="Балл" />
+            <input v-model.number="grade.score" type="number" min="0" step="0.5" :aria-label="$t('teach.review.score')" />
           </label>
-          <input v-model="grade.feedback" placeholder="Комментарий…" class="grade__comment" />
+          <input v-model="grade.feedback" :placeholder="$t('teach.review.commentPh')" class="grade__comment" />
         </div>
         <div class="row" style="justify-content: flex-end">
-          <button class="btn btn--ghost" :disabled="busy" @click="save(true)">На доработку</button>
-          <button class="btn" :disabled="busy" @click="save(false)">Принять · след. <AppIcon name="arrow-right" :size="16" /></button>
+          <button class="btn btn--ghost" :disabled="busy" @click="save(true)">{{ $t('teach.review.toRework') }}</button>
+          <button class="btn" :disabled="busy" @click="save(false)">{{ $t('teach.review.acceptNext') }} <AppIcon name="arrow-right" :size="16" /></button>
         </div>
       </section>
     </div>

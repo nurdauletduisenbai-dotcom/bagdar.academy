@@ -16,12 +16,15 @@ student1@fizmat.kz / StudentPassword123!, parent@fizmat.kz / ParentPassword123!.
 - `composables/useAsync.ts`: `useAsync(fn)` — загрузка с `loading/error/data/run`; `useAction()` — `act(fn, 'Успех')` для кнопок (блокировка повторного нажатия + тосты).
 - `composables/useYouTubeProgress.ts`: отправка прогресса просмотра видео через YouTube IFrame API.
 - `layouts/AppLayout.vue` + `layouts/navigation.ts`: кабинет (верхнее меню), пункты фильтруются по ролям. Главная кабинета — **`/home`**.
-- `layouts/PublicLayout.vue` + `views/public/`: публичный сайт без входа — `/` (лендинг: о платформе, новости, курсы, «как начать»; вошедшего перекидывает на `/home`), `/news`, `/news/:slug`. В шапке «Войти»/«Регистрация». Новости — `api/news.ts` (`/news/posts/`, `/news/stats/`), их ведёт суперпользователь в Django admin («Новости и статьи»). Текст поста — обычный текст, абзацы через пустую строку (без `v-html`).
+- `components/schools/SchoolPicker.vue` + `api/schools.ts`: выбор школы при регистрации (окно с поиском по справочнику школ Казахстана `/schools/`, фильтр по региону, «Моей школы нет в списке» → своя школа/кружок уходит на проверку). Ученику школа обязательна, родителю — нет. **Организация ученика = организация его школы**: если у школы её ещё нет, бэкенд создаёт пустую (`school-<id>`, без курсов и персонала; `apps/schools/services.py`). При смене школы в профиле ученик переходит в организацию новой школы, фронтенд переключается на неё (`auth.switchOrg`). Справочник ведёт суперпользователь в Django admin («Справочник школ»: одобрить, скрыть, объединить дубли, связать с организацией); загрузка — `make schools` (снимок OpenStreetMap, `ARGS=--osm` — свежий, `ARGS=файл.csv` — свой реестр).
+- `views/public/SchoolApplyView.vue` (`/schools/apply`): заявка на подключение школы/учебного центра/кружка → `POST /schools/applications/`. Рассматривает суперпользователь в Django admin («Заявки школ»: одобрить / отклонить / запросить уточнения). Одобрение: организация школы + заявитель становится админом (есть аккаунт — сразу, нет — приглашение на email на 7 дней); логика — `backend/apps/schools/applications.py`.
+- `views/platform/` (`/platform/applications`, только `auth.isSuperuser`, `meta.superuser`): заявки школ на сайте — список с бейджем в меню, карточка с правкой данных школы/заявителя, заменой школы и решением (`applicationsApi`, бэкенд `ApplicationManageViewSet`).
+- `layouts/PublicLayout.vue` + `views/public/`: публичный сайт без входа — `/` (лендинг: о платформе, новости, курсы, «как начать»; вошедшего перекидывает на `/home`), `/news`, `/news/:slug`, `/privacy` (политика конфиденциальности — ЧЕРНОВИК, текст в `views/public/privacyContent.ts`, заглушки `[В СКОБКАХ]` ждут юриста). Контакты в подвале — `config/site.ts` → `SITE_CONTACTS` (пустые поля скрыты). В шапке «Войти»/«Регистрация». Новости — `api/news.ts` (`/news/posts/`, `/news/stats/`), их ведёт суперпользователь в Django admin («Новости и статьи»). Текст поста — обычный текст, абзацы через пустую строку (без `v-html`).
 - `router/index.ts`: `meta.public`, `meta.roles` — доступ к страницам по ролям.
 - `components/ui/`: `AppModal`, `AppPager`, `AppBadge`, `StateBlock` (загрузка/ошибка/пусто), `PageHeader`, `ProgressBar`, `ToastHost`, `MathText` (формулы `$…$` через KaTeX).
 - `views/`: `auth/`, `courses/`, `tests/`, `assignments/`, `progress/`, `teach/` (учитель), `admin/`; общие страницы — в корне.
 - `demo.ts`: демо-аккаунты для кнопок быстрого входа (`VITE_SHOW_DEMO_ACCOUNTS=false` — скрыть).
-- `assets/main.css`: дизайн-система **EdTeach** (Claude Design, проект «Education platform wireframes»): токены и базовые классы.
+- `assets/main.css`: дизайн-система **bagdar.academy-design-v0.1** (Claude Design, https://claude.ai/artifact/4QD1MBJm1JJUbZH9CvDPKm): токены и базовые классы. `assets/brand/` — логотипы и фоны оттуда же, `components/ui/BrandLogo.vue` — логотип, всегда латиницей «bagdar.academy» независимо от языка.
 - `i18n/`: локализация (`vue-i18n`, composition-режим). См. раздел «Локализация» ниже.
 
 ## Локализация (RU / KK)
@@ -30,16 +33,24 @@ student1@fizmat.kz / StudentPassword123!, parent@fizmat.kz / ParentPassword123!.
 - `i18n/locales/{kk,ru}.ts` — ключи сообщений, типизированные объекты (`as const`).
 - `stores/locale.ts` — Pinia-обёртка (`useLocaleStore`): `current`, `options`, `select(locale)`. Читает/пишет `i18n.global` напрямую (не `useI18n()`), потому что используется и вне компонентов (например, `utils/format.ts`).
 - `components/ui/LangSwitcher.vue` — переключатель ҚАЗ/RU (пропс `dark` для тёмного фона). Уже стоит в `AppLayout.vue` (шапка) и `AuthCard.vue` (страница входа/регистрации).
-- `utils/format.ts` → `roleLabel(role)` — название роли на текущем языке (`roles.<role>` в локалях). Старый `roleLabels` (всегда RU) помечен `@deprecated`, оставлен для мест, ещё не переведённых.
+- `utils/format.ts` → `roleLabel(role)` — название роли на текущем языке (`roles.<role>`). Для `<select>` ролей — `roleOptions` (`v-for="(label, key) in roleOptions"`).
+- `utils/format.ts` → словари значений API (`courseTypeLabels`, `courseStatusLabels`, `questionTypeLabels`, `testModeLabels`, `attemptStatusLabels`, `submissionStatusLabels`, `attendanceLabels`, `orderStatusLabels`, `enrollmentStatusLabels`, `auditActionLabels`) — Proxy над ключами `labels.<группа>.<значение>`: работают и как `map[key]`, и в `v-for`, текст берётся из i18n при каждом чтении. Новое значение — добавь его в список ключей в `labelMap(...)` и в обе локали.
+- Даты: `fmtDate/fmtDateTime/fmtTime` — числовые (одинаковы для kk/ru). Словесные — `fmtDateLong` («24 қазан 2026 ж.»), `fmtDayMonth(v, short?)` («24 қазан» / «24 қаз.»), `fmtWeekday(v)` («дс» / «пн»). Казахские месяцы и дни недели заданы вручную — в Intl многих браузеров нет данных `kk`, поэтому `toLocaleDateString('kk')` не используем.
+- `router/index.ts` → `meta.title` — ключ `titles.*` (кабинет), `meta.seo` — ключи заголовка/описания публичных страниц; `applyRouteMeta` переводит их в `afterEach` и при смене языка (`watch(i18n.global.locale)`) и передаёт в `utils/seo.ts`.
 - `layouts/navigation.ts` → `NavItem.labelKey` — ключ `nav.*`, не литеральный текст; в шаблоне `{{ $t(item.labelKey) }}`.
+- Текст с разметкой внутри (ссылка, `<code>`, `<strong>`) — через `<i18n-t keypath="…" tag="p" scope="global">` со слотом (`{link}`, `{name}` в сообщении), а не склейкой строк.
 
-**Текущий статус (2026-10):** сделана только инфраструктура и каркас (навигация, меню пользователя, вход/регистрация, названия ролей) — **полный перевод всех экранов ещё не сделан**, это следующий шаг. Остальные страницы (каталог, уроки, тесты, админка и т.д.) пока на литеральном русском.
+**Текущий статус (2026-10):** переведён весь статичный интерфейс — публичный сайт, вход/регистрация, кабинет всех ролей, тосты, `confirm()`/`prompt()`, заголовки вкладок, подписи статусов. Не переводятся данные с бэкенда: названия курсов, имена, тексты объявлений, **тексты уведомлений и сообщения об ошибках API** (они формируются на сервере на русском — это отдельная задача для бэкенда).
+
+**Где ключи:** общие — `ui.*` (кнопки «Удалить», «Все», `ui.minutes`, `ui.until`…), `labels.*` (значения API), `titles.*` (заголовки вкладок), дальше по экрану: `home`, `catalog`, `courseView`, `lessonView`, `take`, `attempt`, `assignment(s)`, `schedule`, `inbox`, `profile`, `orders`, `children`, `report`, `teach.*`, `admin.*` и т.д. Сообщения с параметрами — `{n}`, `{date}`, `{name}`; символы `@ | { }` в тексте не используй (это синтаксис vue-i18n).
 
 **Как переводить новый текст:** добавь ключ в оба файла `i18n/locales/{kk,ru}.ts` (не только в один — иначе `fallbackLocale` покажет русский для казахского), замени литерал в шаблоне на `{{ $t('раздел.ключ') }}` (или `:prop="$t(...)"` для атрибутов), для `<script setup>` — `const { t } = useI18n()`, вне компонентов — `i18n.global.t(...)` (как в `utils/format.ts`). Не переводи пользовательские данные с бэкенда (имена, названия курсов) — только статичный интерфейсный текст.
 
-## Дизайн (EdTeach, вариант 1a вайрфреймов)
-- **Цвета только через токены**: `--color-primary` (зелёный `#00ed64`, CTA), `--surface-dark`/`--teal-900` (тёмные полосы), `--text-strong/secondary/tertiary`, `--border-default/strong`, `--surface-subtle/soft/feature`, `--warning-*`, `--error-*`. Новые цвета не хардкодить.
-- **Шрифты**: DM Sans (латиница, цифры) + Manrope (кириллица) — подключены через `@fontsource` в `main.css`.
+## Дизайн (bagdar.academy-design-v0.1; раскладка экранов — по вайрфреймам 1a)
+- **Цвета только через токены**: `--brand` #0E6B5C (кнопки, ссылки; текст на нём белый), `--brand-deep` #0A4F45 (тёмные полосы, hero), `--brand-tint`/`--brand-tint-2` (подложки), `--accent` #F4A62A (янтарная «звезда»: только формы и акценты, ≤10% площади, не текст на светлом), `--surface-page` кремовый #F7F4EC, карточки белые, `--signal` для ошибок. Старые имена (`--green-*`, `--teal-*`) — алиасы на бренд: `--green-500` = accent, `--teal-900` = brand-deep. Новые цвета не хардкодить.
+- **Фоны** из системы: `bg-arcs-dark` — hero и финальный призыв главной, `bg-compass-dark` — панель входа/регистрации.
+- **Радиусы**: 8 — поля и теги, 16 — кнопки и карточки, 26 — крупные плитки.
+- **Шрифты**: Montserrat — заголовки (`--font-display`, 700/800), Inter — текст (`--font-sans`); оба с казахской кириллицей, подключены через `@fontsource` в `main.css`.
 - **Раскладка**: верхнее меню (`layouts/AppLayout.vue`, ≤5 пунктов на роль из `layouts/navigation.ts`), остальное — в меню аватара.
 - **Классы**:
   - `btn` — зелёная «пилюля» (главное действие, одно на экран); `btn--ghost` — контур; `btn--text` — без рамки; `btn--dark`; `btn--danger`; размеры `btn--sm/--lg`, `btn--block`.
@@ -53,7 +64,7 @@ student1@fizmat.kz / StudentPassword123!, parent@fizmat.kz / ParentPassword123!.
 - Access-токен хранится только в памяти (`setAccessToken`). Refresh лежит в HttpOnly cookie, его ставит Django. Токены в localStorage не сохранять.
 - Ошибки API приходят в формате `{ error: { code, message, details } }`. Для текста ошибки используй `errorMessage(e)` из `api/http.ts`.
 - Списки пагинированы: `{ total, total_pages, page, page_size, results }` (тип `Paginated<T>`).
-- Тексты интерфейса на русском (позже добавим i18n: ru / kk / en).
+- Тексты интерфейса — только через i18n (`kk` + `ru`), см. «Локализация».
 - Защищённые страницы: `meta: { requiresAuth: true }` в роуте.
 
 ## Роли и что строить

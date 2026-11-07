@@ -62,12 +62,12 @@ const pad = (n: number) => String(n).padStart(2, '0')
   min-width: 64px;
   padding: var(--space-xs) var(--space-sm);
   border-radius: var(--radius-md);
-  background: rgba(0, 30, 43, 0.08);
+  background: rgba(16, 32, 29, 0.08);
   display: grid;
   justify-items: center;
 }
 .countdown__num {
-  font: 600 var(--fs-h3) / 1.1 var(--font-sans);
+  font: 700 var(--fs-h3) / 1.1 var(--font-display);
   font-variant-numeric: tabular-nums;
 }
 .countdown__label {

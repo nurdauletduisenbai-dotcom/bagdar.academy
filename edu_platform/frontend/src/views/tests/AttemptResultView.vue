@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import { testsApi } from '@/api/tests'
@@ -13,6 +14,9 @@ import type { AttemptResult, ReviewItem, TestInfo } from '@/types/api'
 import { attemptStatusLabels, fmtDateTime } from '@/utils/format'
 
 const props = defineProps<{ id: string }>()
+
+const { t } = useI18n()
+
 const router = useRouter()
 const auth = useAuthStore()
 const { act, busy } = useAction()
@@ -50,7 +54,7 @@ function gradeOf(item: ReviewItem) {
 
 async function grade(item: ReviewItem) {
   const g = gradeOf(item)
-  const updated = await act(() => testsApi.grade(Number(props.id), item.question_id, g.score, g.feedback), 'Оценка сохранена')
+  const updated = await act(() => testsApi.grade(Number(props.id), item.question_id, g.score, g.feedback), t('attempt.graded'))
   if (updated) attempt.data.value = updated
 }
 </script>
@@ -62,9 +66,9 @@ async function grade(item: ReviewItem) {
       <section class="band page-band summary">
         <ProgressRing :value="result.score_pct" :size="120" dark :label="`${Math.round(result.score_pct)}%`" />
         <div class="summary__body">
-          <div class="eyebrow">{{ result.status === 'submitted' ? 'Ждёт проверки учителя' : result.is_passed ? 'Тест сдан' : 'Тест не сдан' }}</div>
-          <h1 class="summary__title">{{ testInfo?.title ?? 'Тест' }} · {{ result.score }} из {{ result.max_score }} б.</h1>
-          <p class="muted">{{ Math.round(result.time_spent_seconds / 60) }} мин · {{ attemptStatusLabels[result.status] }} · {{ fmtDateTime(result.submitted_at) }}</p>
+          <div class="eyebrow">{{ result.status === 'submitted' ? $t('attempt.awaitTeacher') : result.is_passed ? $t('attempt.passed') : $t('attempt.failed') }}</div>
+          <h1 class="summary__title">{{ testInfo?.title ?? $t('titles.test') }} · {{ $t('attempt.score', { score: result.score, max: result.max_score }) }}</h1>
+          <p class="muted">{{ $t('ui.minutes', { n: Math.round(result.time_spent_seconds / 60) }) }} · {{ attemptStatusLabels[result.status] }} · {{ fmtDateTime(result.submitted_at) }}</p>
         </div>
       </section>
 
@@ -75,31 +79,31 @@ async function grade(item: ReviewItem) {
       <div v-if="result.review" class="stack">
         <article v-for="(item, i) in result.review" :key="item.question_id" class="card review" :class="`review--${stateOf(item)}`">
           <div class="row row--between">
-            <strong>Вопрос {{ i + 1 }} · {{ item.score }}/{{ item.points }}</strong>
-            <span v-if="stateOf(item) === 'pending'" class="badge badge--warning">ждёт проверки учителем</span>
-            <span v-else-if="stateOf(item) === 'ok'" class="badge badge--success"><AppIcon name="check" :size="12" /> верно</span>
-            <span v-else class="badge badge--danger">неверно</span>
+            <strong>{{ $t('attempt.question', { n: i + 1 }) }} · {{ item.score }}/{{ item.points }}</strong>
+            <span v-if="stateOf(item) === 'pending'" class="badge badge--warning">{{ $t('attempt.pending') }}</span>
+            <span v-else-if="stateOf(item) === 'ok'" class="badge badge--success"><AppIcon name="check" :size="12" /> {{ $t('attempt.correct') }}</span>
+            <span v-else class="badge badge--danger">{{ $t('attempt.wrong') }}</span>
           </div>
           <MathText :text="item.text" block />
-          <div class="small"><span class="muted">Ваш ответ:</span> <MathText :text="myAnswer(item)" /></div>
+          <div class="small"><span class="muted">{{ $t('attempt.yourAnswer') }}</span> <MathText :text="myAnswer(item)" /></div>
           <div v-if="item.correct_options.length" class="small">
-            <span class="muted">Верно:</span>
+            <span class="muted">{{ $t('attempt.rightAnswer') }}</span>
             <span v-for="o in item.correct_options" :key="o.id"> <MathText :text="o.text" /><template v-if="o.match_target"> → {{ o.match_target }}</template>;</span>
           </div>
-          <div v-if="item.explanation" class="small explain"><span class="muted">Разбор:</span> <MathText :text="item.explanation" /></div>
-          <div v-if="item.teacher_feedback" class="small"><span class="muted">Комментарий учителя:</span> {{ item.teacher_feedback }}</div>
+          <div v-if="item.explanation" class="small explain"><span class="muted">{{ $t('attempt.explanation') }}</span> <MathText :text="item.explanation" /></div>
+          <div v-if="item.teacher_feedback" class="small"><span class="muted">{{ $t('attempt.teacherComment') }}</span> {{ item.teacher_feedback }}</div>
           <form v-if="auth.isStaff && item.type === 'open'" class="row" @submit.prevent="grade(item)">
             <input v-model.number="gradeOf(item).score" type="number" min="0" :max="item.points" step="0.5" style="width: 100px" />
-            <input v-model="gradeOf(item).feedback" placeholder="Комментарий ученику" style="flex: 1; min-width: 200px" />
-            <button class="btn btn--sm" :disabled="busy">Оценить</button>
+            <input v-model="gradeOf(item).feedback" :placeholder="$t('attempt.commentPh')" style="flex: 1; min-width: 200px" />
+            <button class="btn btn--sm" :disabled="busy">{{ $t('attempt.grade') }}</button>
           </form>
         </article>
       </div>
-      <p v-else class="muted">Разбор ответов для этого теста скрыт преподавателем.</p>
+      <p v-else class="muted">{{ $t('attempt.hidden') }}</p>
 
       <div class="row actions">
-        <RouterLink :to="`/tests/${result.test_id}/take`" class="btn">Пройти ещё раз</RouterLink>
-        <RouterLink v-if="testInfo" :to="`/courses/${testInfo.course}`" class="btn btn--ghost">К курсу</RouterLink>
+        <RouterLink :to="`/tests/${result.test_id}/take`" class="btn">{{ $t('attempt.retake') }}</RouterLink>
+        <RouterLink v-if="testInfo" :to="`/courses/${testInfo.course}`" class="btn btn--ghost">{{ $t('ui.toCourse') }}</RouterLink>
       </div>
     </template>
   </StateBlock>

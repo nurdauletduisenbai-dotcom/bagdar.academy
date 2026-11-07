@@ -37,6 +37,13 @@ def decrypt_secret(secret_encrypted: str) -> str:
         raise AuthenticationFailed('Секрет 2FA повреждён. Обратитесь к администратору.') from exc
 
 
+INVITE_ERRORS = {
+    'not_found': 'Приглашение не найдено. Проверьте ссылку или код.',
+    'used': 'Это приглашение уже использовано. Войдите в аккаунт.',
+    'expired': 'Срок действия приглашения истёк. Попросите новое.',
+}
+
+
 class AuthService:
     MAX_LOGIN_ATTEMPTS = 5
     LOGIN_BLOCK_TIME = 900  # 15 минут
@@ -108,7 +115,11 @@ class AuthService:
     @classmethod
     @transaction.atomic
     def register(cls, email: str, password: str, first_name: str, last_name: str, role: str = 'student',
-                 org_slug: str | None = None, is_minor: bool = False, parent_consent: bool = False) -> User:
+                 org_slug: str | None = None, is_minor: bool = False, parent_consent: bool = False,
+                 school=None, new_school: dict | None = None) -> User:
+        from apps.schools.models import School
+        from apps.schools.services import ensure_organization, set_student_school
+
         if role not in ('student', 'parent'):
             raise ValidationError("Публичная регистрация доступна только для ролей 'student' или 'parent'.")
         if is_minor and not parent_consent:
@@ -118,9 +129,13 @@ class AuthService:
         if User.all_objects.filter(email=email).exists():
             raise ValidationError({'email': 'Пользователь с таким email уже существует.'})
 
-        org = Organization.objects.filter(slug=org_slug or settings.DEFAULT_ORG_SLUG, is_active=True).first()
-        if not org:
-            raise ValidationError({'org_slug': 'Организация не найдена.'})
+        # Без школы (только родитель) — организация по умолчанию; со школой — организация этой школы
+        default_org = None
+        if not (school or new_school):
+            default_org = Organization.objects.filter(
+                slug=org_slug or settings.DEFAULT_ORG_SLUG, is_active=True).first()
+            if not default_org:
+                raise ValidationError({'org_slug': 'Организация не найдена.'})
 
         user = User.objects.create_user(
             email=email,
@@ -131,18 +146,35 @@ class AuthService:
             parent_consent=parent_consent,
             is_verified=False,
         )
-        OrgMembership.objects.create(org=org, user=user, role=role)
+        if new_school:
+            # Своя школа/кружок: в поиске появится после проверки в Django admin, организация создаётся сразу
+            school = School.objects.create(**new_school, is_approved=False, source=School.Source.USER,
+                                           created_by=user)
+        if school and role == 'student':
+            # Ученик — в организации своей школы; нет организации — создаётся пустая (без курсов и персонала)
+            set_student_school(user, school)
+        elif school:
+            user.school = school
+            user.save(update_fields=['school', 'updated_at'])
+            OrgMembership.objects.create(org=ensure_organization(school), user=user, role=role)
+        else:
+            OrgMembership.objects.create(org=default_org, user=user, role=role)
         transaction.on_commit(lambda: cls.send_verification_email(user))
         return user
 
     @classmethod
     @transaction.atomic
-    def register_by_invite(cls, invite_token: str, email: str, password: str, first_name: str, last_name: str) -> User:
+    def register_by_invite(cls, invite_token: str, password: str, first_name: str, last_name: str,
+                           email: str = '') -> User:
         invite = Invite.objects.select_for_update().filter(token_hash=hash_token(invite_token)).first()
-        if not invite or not invite.is_valid:
-            raise ValidationError('Приглашение недействительно или срок его действия истек.')
+        state = cls.invite_state(invite)
+        if state != 'valid':
+            raise ValidationError({'invite_token': INVITE_ERRORS[state]})
 
-        email = email.lower()
+        # Персональное приглашение: логин — email из приглашения, подменить его нельзя
+        email = (invite.email or email or '').lower()
+        if not email:
+            raise ValidationError({'email': 'Укажите email.'})
         if User.all_objects.filter(email=email).exists():
             raise ValidationError({'email': 'Пользователь с таким email уже существует. Войдите в аккаунт.'})
 
@@ -170,6 +202,35 @@ class AuthService:
         invite.used_count += 1
         invite.save(update_fields=['used_count'])
         return user
+
+    @staticmethod
+    def invite_state(invite) -> str:
+        """valid / used / expired / not_found — что показать на странице приглашения."""
+        if not invite:
+            return 'not_found'
+        if invite.used_count >= invite.max_uses:
+            return 'used'
+        if invite.expires_at <= timezone.now():
+            return 'expired'
+        return 'valid'
+
+    @classmethod
+    def preview_invite(cls, invite_token: str) -> dict:
+        """Данные для формы по ссылке из письма — без регистрации и без расхода приглашения."""
+        invite = Invite.objects.select_related('org').filter(token_hash=hash_token(invite_token or '')).first()
+        state = cls.invite_state(invite)
+        if state != 'valid':
+            return {'status': state}
+        return {
+            'status': state,
+            'org_name': invite.org.name,
+            'role': invite.role,
+            'email': invite.email,
+            'email_locked': bool(invite.email),
+            'first_name': invite.first_name,
+            'last_name': invite.last_name,
+            'expires_at': invite.expires_at,
+        }
 
     # ---------- Вход / выход ----------
 
@@ -244,7 +305,11 @@ class AuthService:
             token_record.save(update_fields=['revoked_at'])
             raise AuthenticationFailed('Срок действия refresh токена истек.')
 
-        current_org_id = resolve_org_id(user, org_id or token_record.org_id)
+        try:
+            current_org_id = resolve_org_id(user, org_id or token_record.org_id)
+        except PermissionDenied:
+            # Организация сессии больше недоступна (ученик сменил школу) — не разлогиниваем, выбираем из своих
+            current_org_id = resolve_org_id(user, None)
 
         new_raw_refresh = secrets.token_urlsafe(48)
         new_hash = hash_token(new_raw_refresh)
@@ -291,7 +356,7 @@ class AuthService:
         from apps.notifications.tasks import send_email_notification_task
         send_email_notification_task.delay(
             user_id=user.id,
-            subject='Подтверждение регистрации на EduPlatform',
+            subject='Подтверждение регистрации на bagdar.academy',
             template='verify_email',
             context={'link': f"{settings.FRONTEND_URL}/verify-email?token={raw_token}"},
         )
@@ -346,7 +411,7 @@ class AuthService:
         from apps.notifications.tasks import send_email_notification_task
         link = f'{settings.FRONTEND_URL}/reset-password?token={raw_token}'
         transaction.on_commit(lambda: send_email_notification_task.delay(
-            user_id=user.id, subject='Сброс пароля EduPlatform', template='password_reset', context={'link': link},
+            user_id=user.id, subject='Сброс пароля bagdar.academy', template='password_reset', context={'link': link},
         ))
 
     @classmethod
@@ -376,15 +441,14 @@ class ParentService:
 
         from .models import ParentStudentRelation
 
-        parent_orgs = set(parent.memberships.filter(role='parent', is_active=True).values_list('org_id', flat=True))
-        if not parent_orgs:
+        if not parent.memberships.filter(role='parent', is_active=True).exists():
             raise PermissionDenied('Привязывать детей может пользователь с ролью «родитель».')
+        # Ребёнок может учиться в любой школе (у каждой своя организация); доступ откроется после его подтверждения
         student = User.objects.filter(
-            email=student_email.lower(), memberships__role='student', memberships__org_id__in=parent_orgs,
-            memberships__is_active=True,
-        ).first()
+            email=student_email.lower(), memberships__role='student', memberships__is_active=True,
+        ).distinct().first()
         if not student:
-            raise ValidationError({'student_email': 'Ученик с таким email не найден в вашей организации.'})
+            raise ValidationError({'student_email': 'Ученик с таким email не найден.'})
         if student.id == parent.id:
             raise ValidationError({'student_email': 'Нельзя привязать себя.'})
 
@@ -398,8 +462,19 @@ class ParentService:
             )
         return relation
 
+    @classmethod
+    def join_child_orgs(cls, parent: User, student: User) -> None:
+        """После подтверждения: родитель становится «родителем» в организациях школы ребёнка."""
+        orgs = student.memberships.filter(role='student', is_active=True).values_list('org_id', flat=True)
+        for org_id in orgs:
+            membership, created = OrgMembership.objects.get_or_create(org_id=org_id, user=parent, role='parent')
+            if not created and not membership.is_active:
+                membership.is_active = True
+                membership.save(update_fields=['is_active', 'updated_at'])
+
+
 class TwoFactorService:
-    ISSUER = 'EduPlatform'
+    ISSUER = 'bagdar.academy'
     BACKUP_CODES_COUNT = 8
 
     @classmethod

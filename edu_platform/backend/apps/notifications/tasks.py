@@ -42,7 +42,7 @@ def render_message(template: str, lang: str, name: str, context: dict) -> str:
         body = body_template.format(**context)
     else:
         body = '\n'.join(f'{key}: {value}' for key, value in context.items())
-    return f'{greeting}\n\n{body}\n\n— EduPlatform'
+    return f'{greeting}\n\n{body}\n\n— bagdar.academy'
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
